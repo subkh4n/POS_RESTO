@@ -53,6 +53,25 @@ export const getCategories = async (): Promise<
   }
 };
 
+export const getModifiers = async (): Promise<{
+  groups: import("../types").ModifierGroup[];
+  items: import("../types").ModifierItem[];
+}> => {
+  if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("PASTE_URL")) {
+    return { groups: [], items: [] };
+  }
+  try {
+    const response = await fetchWithTimeout(
+      `${GOOGLE_SCRIPT_URL}?action=getModifiers`
+    );
+    const data = await response.json();
+    return { groups: data.groups || [], items: data.items || [] };
+  } catch (error) {
+    console.warn("Failed to fetch modifiers:", error);
+    return { groups: [], items: [] };
+  }
+};
+
 export const getTransactions = async (): Promise<TransactionRecord[]> => {
   if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("PASTE_URL")) return [];
   try {

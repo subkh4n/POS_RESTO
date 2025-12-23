@@ -1,6 +1,6 @@
 import React from "react";
 import { Product } from "../types";
-import { ShoppingCart, Heart, Sparkles } from "lucide-react";
+import { ShoppingCart, Heart, Sparkles, Layers } from "lucide-react";
 import { fmtCurrency, getDisplayImageUrl } from "../utils/format";
 import {
   radius,
@@ -12,9 +12,14 @@ import {
 interface ProductCardProps {
   product: Product;
   onAdd: (product: Product) => void;
+  hasModifiers?: boolean;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onAdd }) => {
+const ProductCard: React.FC<ProductCardProps> = ({
+  product,
+  onAdd,
+  hasModifiers,
+}) => {
   const isFlexible =
     product.category.toLowerCase() === "donasi" ||
     product.priceType === "FLEXIBLE";
@@ -77,6 +82,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAdd }) => {
           )}
         </div>
 
+        {/* Modifier Indicator */}
+        {hasModifiers && !isDisabled && (
+          <div className="absolute top-2 right-2">
+            <span
+              className={`bg-violet-500 text-white ${typography.labelSmall} px-2 py-0.5 ${radius.full} ${shadows.lg} flex items-center gap-1`}
+            >
+              <Layers size={8} /> VARIAN
+            </span>
+          </div>
+        )}
+
         {isDisabled && (
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
             <span
@@ -114,16 +130,20 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAdd }) => {
               !isDisabled
                 ? isFlexible
                   ? `${buttonStyles.variants.warning}`
+                  : hasModifiers
+                  ? "bg-violet-50 text-violet-700 hover:bg-violet-500 hover:text-white hover:shadow-lg shadow-violet-100"
                   : "bg-emerald-50 text-emerald-700 hover:bg-emerald-500 hover:text-white hover:shadow-lg shadow-emerald-100"
                 : "bg-gray-100 text-gray-400 cursor-not-allowed"
             }`}
         >
           {isFlexible ? (
             <Heart size={12} fill="currentColor" />
+          ) : hasModifiers ? (
+            <Layers size={12} />
           ) : (
             <ShoppingCart size={12} />
           )}
-          {isFlexible ? "Donasi" : "Tambah"}
+          {isFlexible ? "Donasi" : hasModifiers ? "Pilih Varian" : "Tambah"}
         </button>
       </div>
     </div>

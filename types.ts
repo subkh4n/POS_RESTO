@@ -1,3 +1,28 @@
+export interface ModifierGroup {
+  id: string;
+  name: string;
+  type: "SINGLE" | "MULTIPLE";
+  required: boolean;
+  minSelect: number;
+  maxSelect: number;
+  items: ModifierItem[];
+}
+
+export interface ModifierItem {
+  id: string;
+  groupId: string;
+  name: string;
+  priceAdjust: number;
+  available: boolean;
+}
+
+export interface SelectedModifier {
+  id: string;
+  name: string;
+  priceAdjust: number;
+  groupId: string;
+  groupName: string;
+}
 
 export interface Product {
   id: string;
@@ -6,21 +31,23 @@ export interface Product {
   image: string;
   category: string;
   stock: number;
-  stockType: 'STOK_FISIK' | 'NON_STOK' | 'JASA';
+  stockType: "STOK_FISIK" | "NON_STOK" | "JASA";
   available: boolean;
-  // Added priceType to support flexible pricing models such as donations or open-price items
-  priceType?: 'FIXED' | 'FLEXIBLE';
+  priceType?: "FIXED" | "FLEXIBLE";
+  modifierGroupIds?: string[]; // IDs of modifier groups for this product
 }
 
 export interface CartItem extends Product {
   qty: number;
   note?: string;
+  selectedModifiers?: SelectedModifier[]; // Selected modifiers for this cart item
+  modifierTotal?: number; // Total price adjustment from modifiers
 }
 
 export enum PaymentMethod {
-  TUNAI = 'Tunai',
-  PIUTANG = 'Piutang',
-  QRIS = 'QRIS',
+  TUNAI = "Tunai",
+  PIUTANG = "Piutang",
+  QRIS = "QRIS",
 }
 
 export type Category = string;
@@ -35,7 +62,9 @@ export interface OrderPayload {
     qty: number;
     price: number;
     note: string;
-    allocation: string; // Baru: Donasi ke Sosial, lainnya ke Metode Bayar
+    allocation: string;
+    modifiers?: SelectedModifier[]; // Selected modifiers
+    modifierTotal?: number;
   }[];
   subtotal: number;
   tax: number;
@@ -62,4 +91,10 @@ export interface TransactionRecord {
   items?: any[];
 }
 
-export type ViewState = 'dashboard' | 'pos' | 'reports' | 'items' | 'settings' | 'finance';
+export type ViewState =
+  | "dashboard"
+  | "pos"
+  | "reports"
+  | "items"
+  | "settings"
+  | "finance";

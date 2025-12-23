@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import ProductCard from "../components/ProductCard";
 import OrderPanel from "../components/OrderPanel";
-import { Product, CartItem } from "../types";
+import ModifierModal from "../components/ModifierModal";
+import { Product, CartItem, ModifierGroup, SelectedModifier } from "../types";
 import {
   radius,
   shadows,
@@ -21,6 +22,7 @@ import {
 interface POSViewProps {
   products: Product[];
   categories: { name: string }[];
+  modifierGroups: ModifierGroup[];
   isLoading: boolean;
   cart: CartItem[];
   orderType: string;
@@ -38,6 +40,7 @@ const ITEMS_PER_PAGE = 15;
 const POSView: React.FC<POSViewProps> = ({
   products,
   categories,
+  modifierGroups,
   isLoading,
   cart,
   orderType,
@@ -53,6 +56,10 @@ const POSView: React.FC<POSViewProps> = ({
   const [activeCategory, setActiveCategory] = useState("All Menu");
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Modifier Modal State
+  const [showModifierModal, setShowModifierModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const filteredProducts = products.filter((p) => {
     const matchesCategory =
@@ -75,6 +82,41 @@ const POSView: React.FC<POSViewProps> = ({
   }, [searchQuery, activeCategory]);
 
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);
+
+  // Handle product click - show modal if has modifiers, otherwise add directly
+  const handleProductClick = (product: Product) => {
+    if (product.modifierGroupIds && product.modifierGroupIds.length > 0) {
+      setSelectedProduct(product);
+      setShowModifierModal(true);
+    } else {
+      addToCart(product);
+    }
+  };
+
+  // Handle confirm from modifier modal
+  const handleModifierConfirm = (
+    product: Product,
+    modifiers: SelectedModifier[],
+    modifierTotal: number
+  ) => {
+    // Create a modified product with selected modifiers
+    const modifiedProduct: CartItem = {
+      ...product,
+      qty: 1,
+      selectedModifiers: modifiers,
+      modifierTotal: modifierTotal,
+    };
+
+    // Dispatch custom event to add to cart with modifiers
+    window.dispatchEvent(
+      new CustomEvent("add-to-cart-with-modifiers", {
+        detail: { product: modifiedProduct, modifiers, modifierTotal },
+      })
+    );
+
+    // For now, add base product + modifier total
+    addToCart(product, product.price + modifierTotal);
+  };
 
   return (
     <div className="flex-1 flex flex-col md:flex-row h-screen overflow-hidden bg-white">
@@ -146,7 +188,11 @@ const POSView: React.FC<POSViewProps> = ({
                 <ProductCard
                   key={product.id}
                   product={product}
-                  onAdd={addToCart}
+                  onAdd={handleProductClick}
+                  hasModifiers={
+                    product.modifierGroupIds &&
+                    product.modifierGroupIds.length > 0
+                  }
                 />
               ))}
             </div>
@@ -293,6 +339,20 @@ const POSView: React.FC<POSViewProps> = ({
           />
         </div>
       </div>
+
+      {/* Modifier Modal */}
+      {selectedProduct && (
+        <ModifierModal
+          product={selectedProduct}
+          modifierGroups={modifierGroups}
+          isOpen={showModifierModal}
+          onClose={() => {
+            setShowModifierModal(false);
+            setSelectedProduct(null);
+          }}
+          onConfirm={handleModifierConfirm}
+        />
+      )}
     </div>
   );
 };

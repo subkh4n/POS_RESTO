@@ -10,6 +10,7 @@ function doGet(e) {
     const action = e.parameter.action;
     if (action === "getProducts") return getProducts();
     if (action === "getCategories") return getCategories();
+    if (action === "getModifiers") return getModifiers();
     if (action === "getTransactions") return getTransactions();
     if (action === "getTransactionDetails")
       return getTransactionDetails(e.parameter.id);
@@ -421,7 +422,64 @@ function getProducts() {
       stockType: row[5],
       available: row[6] === true || row[6] === "TRUE",
       image: row[7],
+      modifierGroupIds: row[8]
+        ? String(row[8])
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s)
+        : [],
     })),
+  });
+}
+
+/**
+ * Get all modifier groups and items
+ * ModifierGroups sheet: A=id, B=name, C=type, D=required, E=minSelect, F=maxSelect
+ * ModifierItems sheet: A=id, B=groupId, C=name, D=priceAdjust, E=available
+ */
+function getModifiers() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Get modifier groups
+  const groupSheet = ss.getSheetByName("ModifierGroups");
+  let groups = [];
+  if (groupSheet && groupSheet.getLastRow() >= 2) {
+    const groupRows = groupSheet.getDataRange().getValues();
+    groups = groupRows.slice(1).map((row) => ({
+      id: String(row[0]),
+      name: String(row[1]),
+      type: String(row[2]) || "MULTIPLE",
+      required: row[3] === true || row[3] === "TRUE",
+      minSelect: Number(row[4]) || 0,
+      maxSelect: Number(row[5]) || 10,
+      items: [], // Will be populated below
+    }));
+  }
+
+  // Get modifier items
+  const itemSheet = ss.getSheetByName("ModifierItems");
+  let items = [];
+  if (itemSheet && itemSheet.getLastRow() >= 2) {
+    const itemRows = itemSheet.getDataRange().getValues();
+    items = itemRows.slice(1).map((row) => ({
+      id: String(row[0]),
+      groupId: String(row[1]),
+      name: String(row[2]),
+      priceAdjust: Number(row[3]) || 0,
+      available: row[4] === true || row[4] === "TRUE" || row[4] === undefined,
+    }));
+  }
+
+  // Attach items to their groups
+  groups.forEach((group) => {
+    group.items = items.filter(
+      (item) => item.groupId === group.id && item.available
+    );
+  });
+
+  return createJsonResponse({
+    groups: groups,
+    items: items,
   });
 }
 

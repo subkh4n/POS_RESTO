@@ -16,8 +16,14 @@ function App() {
   const [orderType, setOrderType] = useState<string>("Dine In");
 
   // Menggunakan Hooks yang dipisahkan
-  const { products, categories, transactions, isLoading, fetchData } =
-    useAppData();
+  const {
+    products,
+    categories,
+    transactions,
+    modifierGroups,
+    isLoading,
+    fetchData,
+  } = useAppData();
   const { cart, addToCart, updateQty, updatePrice, removeItem, clearCart } =
     useCart(products, orderType);
 
@@ -45,6 +51,7 @@ function App() {
           <POSView
             products={products}
             categories={categories}
+            modifierGroups={modifierGroups}
             isLoading={isLoading}
             cart={cart}
             orderType={orderType}
