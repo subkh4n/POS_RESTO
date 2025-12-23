@@ -422,11 +422,12 @@ function getProducts() {
       stockType: row[5],
       available: row[6] === true || row[6] === "TRUE",
       image: row[7],
-      modifierGroupIds: row[8]
-        ? String(row[8])
+      priceType: row[8] || "FIXED", // Column I for priceType
+      modifierGroupIds: row[9]
+        ? String(row[9])
             .split(",")
             .map((s) => s.trim())
-            .filter((s) => s)
+            .filter((s) => s && s.startsWith("grp-")) // Only valid group IDs starting with grp-
         : [],
     })),
   });

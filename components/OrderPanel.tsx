@@ -167,7 +167,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
   };
 
   return (
-    <div className="w-full h-full bg-white flex flex-col shadow-2xl border-l border-gray-100 relative">
+    <div className="w-full h-[100dvh] bg-white flex flex-col shadow-2xl border-l border-gray-100 relative overflow-hidden">
       {showSuccessToast && (
         <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md z-[60] flex flex-col items-center justify-center p-6 animate-in fade-in">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xs overflow-hidden p-6 text-center">
@@ -232,10 +232,11 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scroll p-4 space-y-3 bg-gray-50/30">
+      {/* Scrollable Cart Items */}
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scroll p-4 space-y-3 bg-gray-50/30">
         {cart.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center opacity-30 text-center p-8">
-            <ShoppingBag size={48} className="mb-4 text-gray-400" />
+          <div className="flex flex-col items-center justify-center py-8 opacity-30 text-center">
+            <ShoppingBag size={40} className="mb-3 text-gray-400" />
             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
               Keranjang Kosong
             </p>
@@ -319,9 +320,11 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
             );
           })
         )}
+        <div ref={scrollEndRef} />
       </div>
 
-      <div className="p-6 bg-white border-t border-gray-100">
+      {/* Footer - Fixed at bottom */}
+      <div className="flex-shrink-0 p-4 pb-2 bg-white border-t border-gray-100">
         <div className="space-y-2.5 mb-6">
           <div className="flex justify-between text-[11px] font-bold text-gray-400 uppercase tracking-widest">
             <span>Subtotal</span>
