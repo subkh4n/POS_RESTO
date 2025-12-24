@@ -37,6 +37,7 @@ import {
   animations,
   modalStyles,
 } from "../styles/design-system";
+import DatePicker from "./DatePicker";
 
 interface ReportsPageProps {
   onRefresh?: () => void;
@@ -389,55 +390,29 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
             />
           </div>
-          <div className="flex gap-2">
-            {["Semua", "Dine In", "Take Away"].map((f) => (
-              <button
-                key={f}
-                onClick={() => setActiveFilter(f)}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                  activeFilter === f
-                    ? "bg-slate-900 text-white shadow-lg"
-                    : "bg-gray-50 text-gray-500 hover:bg-gray-100"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-        </div>
-        {/* Date Range Filter */}
-        <div className="flex flex-wrap items-center gap-4">
+          {/* Filter Dropdown */}
+          <select
+            value={activeFilter}
+            onChange={(e) => setActiveFilter(e.target.value)}
+            className="bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-xs font-bold text-gray-700 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer"
+          >
+            <option value="Semua">Semua Tipe</option>
+            <option value="Dine In">Dine In</option>
+            <option value="Take Away">Take Away</option>
+          </select>
+          {/* Date Range Filter */}
           <div className="flex items-center gap-2">
-            <Calendar size={16} className="text-gray-400" />
-            <span className="text-xs font-bold text-gray-400 uppercase">
-              Rentang Tanggal:
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
+            <DatePicker
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+              onChange={setStartDate}
+              placeholder="Dari"
             />
             <span className="text-gray-400 text-xs">s/d</span>
-            <input
-              type="date"
+            <DatePicker
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+              onChange={setEndDate}
+              placeholder="Sampai"
             />
-            {(startDate || endDate) && (
-              <button
-                onClick={() => {
-                  setStartDate("");
-                  setEndDate("");
-                }}
-                className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-              >
-                Reset
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -452,6 +427,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
                 <th className="px-4 py-5">Tipe / Meja</th>
                 <th className="px-4 py-5">Metode</th>
                 <th className="px-4 py-5 text-right">Harga Pesanan</th>
+                <th className="px-4 py-5 text-right">Pajak</th>
                 <th className="px-4 py-5 text-right">Donasi</th>
                 <th className="px-4 py-5 text-right">Total</th>
                 <th className="px-4 py-5 text-center">Aksi</th>
@@ -460,14 +436,14 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-20">
+                  <td colSpan={9} className="text-center py-20">
                     <Loader2 className="animate-spin mx-auto mb-2 text-emerald-500" />
                   </td>
                 </tr>
               ) : displayedTxs.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="text-center py-20 text-gray-400 text-sm"
                   >
                     Tidak ada transaksi.
@@ -526,6 +502,11 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
                       <td className="px-4 py-4 text-right">
                         <p className="text-sm font-bold text-gray-700">
                           {fmtCurrency(orderPrice)}
+                        </p>
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <p className="text-sm font-medium text-gray-500">
+                          {fmtCurrency(t.tax)}
                         </p>
                       </td>
                       <td className="px-4 py-4 text-right">
