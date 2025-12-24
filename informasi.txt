@@ -1,0 +1,19 @@
+ini adalah aplikasi pos untuk restoran
+fitur yang tersedia:
+- Manajemen Menu (Makanan & Minuman)
+- Manajemen Meja dan Reservasi
+- Pencatatan Pesanan (Dine-in & Takeaway)
+- Sistem Pembayaran Terintegrasi (Tunai & Digital)
+- Laporan Penjualan Real-time
+- Manajemen Stok Bahan Baku
+- Manajemen Hak Akses Karyawan
+- Manajemen Transaksi
+- Manajemen Piutang
+- Manajemen Donasi
+- Manajemen Laporan
+- Manajemen Pengguna
+- Manajemen Transaksi
+- Manajemen Piutang
+- Manajemen Donasi
+- Manajemen Laporan
+- Manajemen Pengguna
