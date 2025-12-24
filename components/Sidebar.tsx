@@ -8,6 +8,7 @@ import {
   FileText,
   UtensilsCrossed,
   Wallet,
+  Users,
 } from "lucide-react";
 import { ViewState } from "../types";
 import { radius, shadows, typography } from "../styles/design-system";
@@ -15,17 +16,67 @@ import { radius, shadows, typography } from "../styles/design-system";
 interface SidebarProps {
   currentView: ViewState;
   onNavigate: (view: ViewState) => void;
+  userRole?: "ADMIN" | "MANAGER" | "KASIR";
+  onLogout?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
-  const menuItems: { icon: any; label: string; view: ViewState }[] = [
-    { icon: LayoutDashboard, label: "Dash", view: "dashboard" },
-    { icon: UtensilsCrossed, label: "Kasir", view: "pos" },
-    { icon: FileText, label: "Histori", view: "reports" },
-    { icon: Wallet, label: "Finance", view: "finance" },
-    { icon: ShoppingBag, label: "Stok", view: "items" },
-    { icon: Settings, label: "Opsi", view: "settings" },
+const Sidebar: React.FC<SidebarProps> = ({
+  currentView,
+  onNavigate,
+  userRole = "KASIR",
+  onLogout,
+}) => {
+  // Menu items dengan role access
+  const allMenuItems: {
+    icon: any;
+    label: string;
+    view: ViewState;
+    roles: string[];
+  }[] = [
+    {
+      icon: LayoutDashboard,
+      label: "Dash",
+      view: "dashboard",
+      roles: ["ADMIN", "MANAGER", "KASIR"],
+    },
+    {
+      icon: UtensilsCrossed,
+      label: "Kasir",
+      view: "pos",
+      roles: ["ADMIN", "MANAGER", "KASIR"],
+    },
+    {
+      icon: FileText,
+      label: "Histori",
+      view: "reports",
+      roles: ["ADMIN", "MANAGER"],
+    },
+    {
+      icon: Wallet,
+      label: "Finance",
+      view: "finance",
+      roles: ["ADMIN", "MANAGER"],
+    },
+    {
+      icon: ShoppingBag,
+      label: "Stok",
+      view: "items",
+      roles: ["ADMIN", "MANAGER"],
+    },
+    { icon: Users, label: "Users", view: "users", roles: ["ADMIN"] },
+    { icon: Settings, label: "Opsi", view: "settings", roles: ["ADMIN"] },
   ];
+
+  // Filter menu items berdasarkan role
+  const menuItems = allMenuItems.filter((item) =>
+    item.roles.includes(userRole)
+  );
+
+  const handleLogout = () => {
+    if (onLogout && confirm("Apakah Anda yakin ingin keluar?")) {
+      onLogout();
+    }
+  };
 
   return (
     <>
@@ -64,7 +115,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
           ))}
         </div>
 
-        <button className="mt-auto p-4 text-gray-300 hover:text-red-500 transition-colors">
+        <button
+          onClick={handleLogout}
+          className="mt-auto p-4 text-gray-300 hover:text-red-500 transition-colors"
+          title="Keluar"
+        >
           <LogOut size={22} />
         </button>
       </div>

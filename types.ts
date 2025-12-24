@@ -98,4 +98,5 @@ export type ViewState =
   | "reports"
   | "items"
   | "settings"
-  | "finance";
+  | "finance"
+  | "users";

@@ -4,14 +4,20 @@ import Sidebar from "./components/Sidebar";
 import ReportsPage from "./components/ReportsPage";
 import ItemsPage from "./components/ItemsPage";
 import FinancePage from "./components/FinancePage";
+import UsersPage from "./components/UsersPage";
 import DashboardView from "./views/DashboardView";
 import POSView from "./views/POSView";
 import { useAppData } from "./hooks/useAppData";
 import { useCart } from "./hooks/useCart";
 import { ViewState } from "./types";
-import { Settings } from "lucide-react";
+import { Settings, Loader2 } from "lucide-react";
 
-function App() {
+// Import Auth Module
+import { AuthProvider, useAuth, LoginForm } from "./modules/user";
+
+// Main App Content (after login)
+function MainApp() {
+  const { user, logout, isLoading: authLoading } = useAuth();
   const [currentView, setCurrentView] = useState<ViewState>("dashboard");
   const [orderType, setOrderType] = useState<string>("Dine In");
 
@@ -37,7 +43,42 @@ function App() {
       window.removeEventListener("add-to-cart-flexible", handleFlexibleAdd);
   }, [addToCart]);
 
+  // Check access berdasarkan role
+  const checkAccess = (view: ViewState): boolean => {
+    const accessMap: Record<ViewState, string[]> = {
+      dashboard: ["ADMIN", "MANAGER", "KASIR"],
+      pos: ["ADMIN", "MANAGER", "KASIR"],
+      reports: ["ADMIN", "MANAGER"],
+      finance: ["ADMIN", "MANAGER"],
+      items: ["ADMIN", "MANAGER"],
+      users: ["ADMIN"],
+      settings: ["ADMIN"],
+    };
+    return accessMap[view]?.includes(user?.role || "") ?? false;
+  };
+
+  // Redirect ke view yang diizinkan jika tidak punya akses
+  useEffect(() => {
+    if (user && !checkAccess(currentView)) {
+      // Jika kasir, redirect ke POS
+      if (user.role === "KASIR") {
+        setCurrentView("pos");
+      } else {
+        setCurrentView("dashboard");
+      }
+    }
+  }, [currentView, user]);
+
   const renderView = () => {
+    // Check access
+    if (!checkAccess(currentView)) {
+      return (
+        <div className="flex-1 flex items-center justify-center text-gray-400 bg-white">
+          <p>Anda tidak memiliki akses ke halaman ini</p>
+        </div>
+      );
+    }
+
     switch (currentView) {
       case "dashboard":
         return (
@@ -76,6 +117,8 @@ function App() {
             onRefresh={fetchData}
           />
         );
+      case "users":
+        return <UsersPage currentUserId={user?.id} />;
       case "settings":
         return (
           <div className="flex-1 flex items-center justify-center text-gray-400 bg-white">
@@ -97,13 +140,54 @@ function App() {
       <Sidebar
         currentView={currentView}
         onNavigate={(v) => {
-          setCurrentView(v);
-          fetchData();
+          if (checkAccess(v)) {
+            setCurrentView(v);
+            fetchData();
+          }
         }}
+        userRole={user?.role as "ADMIN" | "MANAGER" | "KASIR"}
+        onLogout={logout}
       />
       {renderView()}
       <SpeedInsights />
     </div>
+  );
+}
+
+// App Wrapper with Auth
+function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2
+            size={48}
+            className="animate-spin text-emerald-500 mx-auto mb-4"
+          />
+          <p className="text-slate-400">Memuat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Jika belum login, tampilkan form login
+  if (!isAuthenticated) {
+    return <LoginForm />;
+  }
+
+  // Jika sudah login, tampilkan aplikasi
+  return <MainApp />;
+}
+
+// Root App with AuthProvider
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

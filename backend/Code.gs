@@ -33,6 +33,27 @@ function doPost(e) {
     const action = data.action;
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
+    // ========== USER AUTH HANDLERS (functions in user.gs) ==========
+    if (action === "login") {
+      return handleLogin(data);
+    }
+    if (action === "getUsers") {
+      return getUsers();
+    }
+    if (action === "addUser") {
+      return addUser(data);
+    }
+    if (action === "updateUser") {
+      return updateUser(data);
+    }
+    if (action === "deleteUser") {
+      return deleteUser(data.id);
+    }
+    if (action === "changePassword") {
+      return changePassword(data);
+    }
+
+    // ========== POS HANDLERS ==========
     if (action === "addOrder") {
       let sheetTrans =
         ss.getSheetByName("Transactions") || ss.insertSheet("Transactions");
