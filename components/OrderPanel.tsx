@@ -99,6 +99,107 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
     }
   };
 
+  // Function to print receipt automatically without confirmation
+  const printReceipt = (
+    orderId: string,
+    items: {
+      id: string;
+      name: string;
+      qty: number;
+      price: number;
+      note: string;
+      allocation: string;
+    }[],
+    subtotalVal: number,
+    taxVal: number,
+    totalVal: number,
+    cashReceivedVal: number,
+    changeVal: number,
+    paymentMethodStr: string,
+    tableNum: string,
+    orderTypeStr: string
+  ) => {
+    const printArea = document.getElementById("print-area");
+    if (!printArea) return;
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+    const timeStr = now.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    printArea.innerHTML = `
+      <div style="text-align: center; margin-bottom: 10px; font-family: sans-serif;">
+        <h2 style="margin: 0; font-size: 16px;">FOODCOURT POS</h2>
+        <p style="font-size: 10px; margin: 0;">Nota Transaksi</p>
+      </div>
+      <div style="border-bottom: 1px dashed black; margin-bottom: 10px;"></div>
+      <div style="font-size: 10px; margin-bottom: 10px; font-family: monospace;">
+        <p style="margin: 2px 0;">ID: ${orderId}</p>
+        <p style="margin: 2px 0;">Tanggal: ${dateStr} ${timeStr}</p>
+        <p style="margin: 2px 0;">Meja: ${tableNum} / ${orderTypeStr}</p>
+        <p style="margin: 2px 0;">Bayar: ${paymentMethodStr}</p>
+      </div>
+      <div style="border-bottom: 1px dashed black; margin-bottom: 10px;"></div>
+      <table style="width: 100%; font-size: 10px; border-collapse: collapse; font-family: monospace;">
+        ${items
+          .map(
+            (item) => `
+          <tr><td style="padding: 2px 0;">${item.name}</td></tr>
+          <tr>
+            <td style="padding: 0 0 4px 0; color: #666;">${fmt(item.price)} x ${
+              item.qty
+            }</td>
+            <td style="text-align: right; padding: 0 0 4px 0;">${fmt(
+              item.price * item.qty
+            )}</td>
+          </tr>
+        `
+          )
+          .join("")}
+      </table>
+      <div style="border-top: 1px dashed black; margin-top: 10px; padding-top: 5px; font-family: monospace;">
+        <div style="display: flex; justify-content: space-between; font-size: 10px;">
+          <span>Subtotal</span>
+          <span>${fmt(subtotalVal)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 10px;">
+          <span>Pajak (10%)</span>
+          <span>${fmt(taxVal)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-top: 5px;">
+          <span>TOTAL</span>
+          <span>${fmt(totalVal)}</span>
+        </div>
+        ${
+          paymentMethodStr === "Tunai"
+            ? `
+        <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 5px;">
+          <span>Tunai</span>
+          <span>${fmt(cashReceivedVal)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 10px;">
+          <span>Kembalian</span>
+          <span>${fmt(changeVal)}</span>
+        </div>
+        `
+            : ""
+        }
+      </div>
+      <div style="text-align: center; margin-top: 15px; font-size: 9px; font-family: sans-serif;">
+        <p style="margin: 0;">Terima kasih atas kunjungan Anda!</p>
+      </div>
+    `;
+
+    // Trigger print directly without confirmation
+    window.print();
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     if (paymentMethod === PaymentMethod.TUNAI && cashValue < total) {
@@ -160,6 +261,21 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
     const result = await submitOrder(payload);
     setIsProcessing(false);
     if (result.success) {
+      // Auto-print receipt without confirmation
+      printReceipt(
+        generatedId,
+        itemsWithAllocation,
+        subtotal,
+        tax,
+        total,
+        paymentMethod === PaymentMethod.TUNAI ? cashValue : total,
+        paymentMethod === PaymentMethod.TUNAI ? Math.max(0, change) : 0,
+        paymentMethod === PaymentMethod.PIUTANG
+          ? `Piutang: ${debtorName}`
+          : paymentMethod,
+        selectedTable,
+        orderType
+      );
       setShowSuccessToast(true);
     } else {
       alert("Gagal menyimpan transaksi.");
