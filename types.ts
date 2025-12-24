@@ -89,6 +89,7 @@ export interface TransactionRecord {
   cashier: string;
   paymentMethod?: string;
   items?: any[];
+  donation?: number;
 }
 
 export type ViewState =

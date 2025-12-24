@@ -16,6 +16,9 @@ import {
   ShoppingBag,
   User,
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
 } from "lucide-react";
 import {
   getTransactions,
@@ -44,6 +47,12 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("Semua");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
+
+  // Date range filter
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const [selectedTx, setSelectedTx] = useState<TransactionRecord | null>(null);
   const [txDetails, setTxDetails] = useState<any[]>([]);
@@ -256,6 +265,35 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
       (t.paymentMethod || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Apply order type filter and date range filter
+  const displayedTxs = filteredTxs.filter((t) => {
+    // Order type filter
+    if (activeFilter !== "Semua" && t.orderType !== activeFilter) {
+      return false;
+    }
+    // Date range filter
+    if (startDate || endDate) {
+      const txDate = new Date(t.timestamp);
+      const txDateStr = txDate.toISOString().split("T")[0];
+      if (startDate && txDateStr < startDate) return false;
+      if (endDate && txDateStr > endDate) return false;
+    }
+    return true;
+  });
+
+  // Pagination calculation
+  const totalPages = Math.ceil(displayedTxs.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedTxs = displayedTxs.slice(
+    startIndex,
+    startIndex + ITEMS_PER_PAGE
+  );
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeFilter, startDate, endDate]);
+
   return (
     <div className="flex-1 bg-gray-50 h-screen overflow-y-auto custom-scroll p-4 lg:p-8 animate-in fade-in duration-500 relative">
       {/* Custom Delete Confirmation Pop-up */}
@@ -336,34 +374,71 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
         </button>
       </div>
 
-      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm mb-8 flex flex-wrap items-center gap-4">
-        <div className="relative flex-1 min-w-[300px]">
-          <input
-            type="text"
-            placeholder="Cari No. Resi, Meja, atau Nama Piutang..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-gray-50 border border-transparent rounded-xl py-3 pl-10 pr-4 text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
-          />
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
+      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm mb-8">
+        <div className="flex flex-wrap items-center gap-4 mb-4">
+          <div className="relative flex-1 min-w-[200px]">
+            <input
+              type="text"
+              placeholder="Cari No. Resi, Meja, atau Nama Piutang..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-gray-50 border border-transparent rounded-xl py-3 pl-10 pr-4 text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
+            />
+            <Search
+              size={18}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+          </div>
+          <div className="flex gap-2">
+            {["Semua", "Dine In", "Take Away"].map((f) => (
+              <button
+                key={f}
+                onClick={() => setActiveFilter(f)}
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  activeFilter === f
+                    ? "bg-slate-900 text-white shadow-lg"
+                    : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-2">
-          {["Semua", "Dine In", "Take Away"].map((f) => (
-            <button
-              key={f}
-              onClick={() => setActiveFilter(f)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                activeFilter === f
-                  ? "bg-slate-900 text-white shadow-lg"
-                  : "bg-gray-50 text-gray-500 hover:bg-gray-100"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
+        {/* Date Range Filter */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Calendar size={16} className="text-gray-400" />
+            <span className="text-xs font-bold text-gray-400 uppercase">
+              Rentang Tanggal:
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+            />
+            <span className="text-gray-400 text-xs">s/d</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+            />
+            {(startDate || endDate) && (
+              <button
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+              >
+                Reset
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -372,42 +447,44 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-gray-50/50 text-gray-400 text-[10px] uppercase tracking-widest font-bold">
-                <th className="px-6 py-5">No. Resi</th>
-                <th className="px-6 py-5">Waktu</th>
-                <th className="px-6 py-5">Tipe / Meja</th>
-                <th className="px-6 py-5">Metode</th>
-                <th className="px-6 py-5 text-right">Total</th>
-                <th className="px-6 py-5 text-center">Aksi</th>
+                <th className="px-4 py-5">No. Resi</th>
+                <th className="px-4 py-5">Waktu</th>
+                <th className="px-4 py-5">Tipe / Meja</th>
+                <th className="px-4 py-5">Metode</th>
+                <th className="px-4 py-5 text-right">Harga Pesanan</th>
+                <th className="px-4 py-5 text-right">Donasi</th>
+                <th className="px-4 py-5 text-right">Total</th>
+                <th className="px-4 py-5 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-20">
+                  <td colSpan={8} className="text-center py-20">
                     <Loader2 className="animate-spin mx-auto mb-2 text-emerald-500" />
                   </td>
                 </tr>
-              ) : filteredTxs.length === 0 ? (
+              ) : displayedTxs.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={8}
                     className="text-center py-20 text-gray-400 text-sm"
                   >
                     Tidak ada transaksi.
                   </td>
                 </tr>
               ) : (
-                filteredTxs
-                  .filter(
-                    (t) =>
-                      activeFilter === "Semua" || t.orderType === activeFilter
-                  )
-                  .map((t, idx) => (
+                paginatedTxs.map((t, idx) => {
+                  // Use donation from API (calculated in backend from Transaction_Details)
+                  const donationAmount = t.donation || 0;
+                  const orderPrice = t.subtotal - donationAmount;
+
+                  return (
                     <tr
                       key={t.id || idx}
                       className="hover:bg-gray-50/30 transition-colors group"
                     >
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <p className="text-sm font-bold text-gray-800">
                           {t.id}
                         </p>
@@ -415,7 +492,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
                           {t.cashier}
                         </p>
                       </td>
-                      <td className="px-6 py-4 text-xs text-gray-500">
+                      <td className="px-4 py-4 text-xs text-gray-500">
                         <div className="flex items-center gap-2">
                           <Clock size={12} className="text-gray-300" />
                           {new Date(t.timestamp).toLocaleTimeString("id-ID", {
@@ -424,7 +501,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
                           })}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <div className="flex items-center gap-1.5">
                           <MapPin size={12} className="text-gray-300" />
                           <span className="text-xs font-bold text-gray-700">
@@ -432,7 +509,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <span
                           className={`px-3 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
                             t.paymentMethod?.includes("Piutang")
@@ -446,12 +523,30 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
                             : t.paymentMethod}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-4 py-4 text-right">
+                        <p className="text-sm font-bold text-gray-700">
+                          {fmtCurrency(orderPrice)}
+                        </p>
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <p
+                          className={`text-sm font-bold ${
+                            donationAmount > 0
+                              ? "text-rose-500"
+                              : "text-gray-300"
+                          }`}
+                        >
+                          {donationAmount > 0
+                            ? fmtCurrency(donationAmount)
+                            : "-"}
+                        </p>
+                      </td>
+                      <td className="px-4 py-4 text-right">
                         <p className="text-sm font-black text-emerald-600">
                           {fmtCurrency(t.total)}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => handleView(t)}
@@ -486,11 +581,56 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
                         </div>
                       </td>
                     </tr>
-                  ))
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Navigation */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+            <p className="text-xs text-gray-400 font-medium">
+              Menampilkan {startIndex + 1}-
+              {Math.min(startIndex + ITEMS_PER_PAGE, displayedTxs.length)} dari{" "}
+              {displayedTxs.length} transaksi
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${
+                      currentPage === page
+                        ? "bg-slate-900 text-white shadow-lg"
+                        : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {selectedTx && (

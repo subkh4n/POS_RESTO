@@ -489,23 +489,47 @@ function getTransactions() {
   const sheet = ss.getSheetByName("Transactions");
   if (!sheet || sheet.getLastRow() < 2)
     return createJsonResponse({ transactions: [] });
+
+  // Get transaction details to calculate donations
+  const detailSheet = ss.getSheetByName("Transaction_Details");
+  let donationByOrderId = {};
+
+  if (detailSheet && detailSheet.getLastRow() >= 2) {
+    const detailRows = detailSheet.getDataRange().getValues();
+    for (let i = 1; i < detailRows.length; i++) {
+      const orderId = String(detailRows[i][0]).trim();
+      const allocation = String(detailRows[i][8] || "").trim();
+      const totalPrice = Number(detailRows[i][7]) || 0;
+
+      // Check if this item is a donation (allocation is "Donasi" or "Dana Sosial")
+      if (allocation === "Donasi" || allocation === "Dana Sosial") {
+        donationByOrderId[orderId] =
+          (donationByOrderId[orderId] || 0) + totalPrice;
+      }
+    }
+  }
+
   const rows = sheet.getDataRange().getValues();
   return createJsonResponse({
     transactions: rows
       .slice(1)
-      .map((row) => ({
-        id: String(row[0]),
-        timestamp: row[1],
-        subtotal: Number(row[2]),
-        tax: Number(row[3]),
-        total: Number(row[4]),
-        cashReceived: Number(row[5]),
-        change: Number(row[6]),
-        orderType: row[7],
-        tableNumber: row[8],
-        cashier: row[9],
-        paymentMethod: row[10],
-      }))
+      .map((row) => {
+        const orderId = String(row[0]);
+        return {
+          id: orderId,
+          timestamp: row[1],
+          subtotal: Number(row[2]),
+          tax: Number(row[3]),
+          total: Number(row[4]),
+          cashReceived: Number(row[5]),
+          change: Number(row[6]),
+          orderType: row[7],
+          tableNumber: row[8],
+          cashier: row[9],
+          paymentMethod: row[10],
+          donation: donationByOrderId[orderId] || 0,
+        };
+      })
       .reverse(),
   });
 }

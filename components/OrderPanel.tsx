@@ -62,7 +62,12 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
     }).format(n);
 
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.qty, 0);
-  const tax = Math.round(subtotal * 0.1);
+  // Donation items are not taxed
+  const taxableAmount = cart.reduce((acc, item) => {
+    if (item.category.toLowerCase() === "donasi") return acc;
+    return acc + item.price * item.qty;
+  }, 0);
+  const tax = Math.round(taxableAmount * 0.1);
   const total = subtotal + tax;
   const cashValue = parseInt(cashReceived.replace(/\./g, "") || "0", 10);
   const change = cashValue - total;
@@ -220,7 +225,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
     const itemsWithAllocation = cart.map((c) => {
       let allocation = "Umum";
       if (c.category.toLowerCase() === "donasi") {
-        allocation = "Dana Sosial";
+        allocation = "Donasi";
       } else {
         // Alokasi mengikuti metode bayar utama jika bukan donasi
         allocation =
