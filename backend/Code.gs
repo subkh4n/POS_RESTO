@@ -1,7 +1,9 @@
 /**
  * Google Apps Script Backend for FoodCourt POS
- * v3.5 - Indonesian Labels & Custom Allocation per Item
+ * v3.6 - Modular with separate QRIS module (qris.gs)
  */
+
+// NOTE: QRIS/Midtrans configuration is in qris.gs file
 
 function doGet(e) {
   try {
@@ -33,6 +35,18 @@ function doPost(e) {
     const action = data.action;
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
+    // ========== MIDTRANS QRIS HANDLERS ==========
+    // Create QRIS transaction via Midtrans Snap
+    if (action === "createQrisTransaction") {
+      return createMidtransQrisTransaction(data);
+    }
+
+    // Handle Midtrans webhook notification
+    if (data.transaction_status) {
+      return handleMidtransNotification(data);
+    }
+
+    // ========== EXISTING HANDLERS ==========
     if (action === "addOrder") {
       let sheetTrans =
         ss.getSheetByName("Transactions") || ss.insertSheet("Transactions");
@@ -658,3 +672,9 @@ function createJsonResponse(data) {
     ContentService.MimeType.JSON
   );
 }
+
+// NOTE: QRIS/Midtrans functions are in qris.gs file:
+// - createMidtransQrisTransaction()
+// - handleMidtransNotification()
+// - checkQrisPaymentStatus()
+// - getQrisTransactions()
