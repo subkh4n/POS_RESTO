@@ -93,7 +93,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
           detail: { product: donationItem, price: change },
         })
       );
-      setCashReceived(fmt(total));
+      // Note: Don't change cashReceived - keep the user's original input
     } else {
       alert("Item Donasi tidak ditemukan.");
     }
