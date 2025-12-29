@@ -99,4 +99,7 @@ export type ViewState =
   | "items"
   | "settings"
   | "finance"
-  | "users";
+  | "users"
+  | "customers"
+  | "onlineOrders"
+  | "onlinePayments";

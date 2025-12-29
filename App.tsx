@@ -5,6 +5,8 @@ import ReportsPage from "./components/ReportsPage";
 import ItemsPage from "./components/ItemsPage";
 import FinancePage from "./components/FinancePage";
 import UsersPage from "./components/UsersPage";
+import OnlineOrdersPage from "./components/OnlineOrdersPage";
+import CustomersPage from "./components/CustomersPage";
 import SettingsPage from "./components/SettingsPage";
 import DashboardView from "./views/DashboardView";
 import POSView from "./views/POSView";
@@ -168,6 +170,10 @@ function MainApp() {
         );
       case "users":
         return <UsersPage currentUserId={user?.id} />;
+      case "customers":
+        return <CustomersPage />;
+      case "onlineOrders":
+        return <OnlineOrdersPage />;
       case "settings":
         return <SettingsPage />;
       default:

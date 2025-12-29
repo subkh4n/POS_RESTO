@@ -65,6 +65,52 @@ function doPost(e) {
       return updateStoreSettings(data);
     }
 
+    // ========== ONLINE ORDER HANDLERS (functions in online_order.gs) ==========
+    if (action === "customerRegister") {
+      return handleCustomerRegister(data);
+    }
+    if (action === "customerLogin") {
+      return handleCustomerLogin(data);
+    }
+    if (action === "createOnlineOrder") {
+      return handleCreateOnlineOrder(data);
+    }
+    if (action === "getOnlineOrders") {
+      return handleGetOnlineOrders(data);
+    }
+    if (action === "getOrderTracking") {
+      return handleGetOrderTracking(data);
+    }
+    if (action === "updateOrderStatus") {
+      return handleUpdateOrderStatus(data);
+    }
+    if (action === "getPendingOnlineOrders") {
+      return handleGetPendingOnlineOrders();
+    }
+    // Customer Management (Admin only)
+    if (action === "getCustomers") {
+      return handleGetCustomers();
+    }
+    if (action === "updateCustomer") {
+      return handleUpdateCustomer(data);
+    }
+    if (action === "deleteCustomer") {
+      return handleDeleteCustomer(data);
+    }
+    if (action === "toggleCustomerActive") {
+      return handleToggleCustomerActive(data);
+    }
+    if (action === "resetCustomerPassword") {
+      return handleResetCustomerPassword(data);
+    }
+    // Public endpoints for mobile app (no auth required)
+    if (action === "getPublicProducts") {
+      return getProducts();
+    }
+    if (action === "getPublicCategories") {
+      return getCategories();
+    }
+
     // ========== POS HANDLERS ==========
     if (action === "addOrder") {
       let sheetTrans =
