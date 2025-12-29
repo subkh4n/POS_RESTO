@@ -52,6 +52,12 @@ function doPost(e) {
     if (action === "changePassword") {
       return changePassword(data);
     }
+    if (action === "getPermissions") {
+      return getPermissions();
+    }
+    if (action === "updatePermissions") {
+      return updatePermissions(data);
+    }
 
     // ========== POS HANDLERS ==========
     if (action === "addOrder") {
@@ -678,4 +684,159 @@ function createJsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(
     ContentService.MimeType.JSON
   );
+}
+
+// ========== PERMISSIONS MANAGEMENT ==========
+
+const PERMISSIONS_SHEET_NAME = "Permissions";
+const DEFAULT_PERMISSIONS = {
+  ADMIN: {
+    dashboard: true,
+    pos: true,
+    reports: true,
+    finance: true,
+    items: true,
+    users: true,
+    settings: true,
+  },
+  MANAGER: {
+    dashboard: true,
+    pos: true,
+    reports: true,
+    finance: true,
+    items: true,
+    users: false,
+    settings: false,
+  },
+  KASIR: {
+    dashboard: true,
+    pos: true,
+    reports: false,
+    finance: false,
+    items: false,
+    users: false,
+    settings: false,
+  },
+};
+
+/**
+ * Get permissions from Permissions sheet
+ */
+function getPermissions() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(PERMISSIONS_SHEET_NAME);
+
+    // Create sheet with defaults if not exists
+    if (!sheet) {
+      sheet = createPermissionsSheet(ss);
+    }
+
+    if (sheet.getLastRow() < 2) {
+      return createJsonResponse({ permissions: DEFAULT_PERMISSIONS });
+    }
+
+    const rows = sheet.getDataRange().getValues();
+    const headers = rows[0];
+    const permissions = {};
+
+    for (let i = 1; i < rows.length; i++) {
+      const role = rows[i][0];
+      permissions[role] = {};
+      for (let j = 1; j < headers.length; j++) {
+        permissions[role][headers[j]] =
+          rows[i][j] === true || rows[i][j] === "TRUE";
+      }
+    }
+
+    return createJsonResponse({ permissions });
+  } catch (error) {
+    return createJsonResponse({
+      success: false,
+      message: "Error: " + error.toString(),
+      permissions: DEFAULT_PERMISSIONS,
+    });
+  }
+}
+
+/**
+ * Update permissions for a specific role
+ * @param {Object} data - { role: string, feature: string, enabled: boolean }
+ */
+function updatePermissions(data) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(PERMISSIONS_SHEET_NAME);
+
+    if (!sheet) {
+      sheet = createPermissionsSheet(ss);
+    }
+
+    // Don't allow editing ADMIN permissions
+    if (data.role === "ADMIN") {
+      return createJsonResponse({
+        success: false,
+        message: "Tidak dapat mengubah permissions ADMIN",
+      });
+    }
+
+    const rows = sheet.getDataRange().getValues();
+    const headers = rows[0];
+
+    // Find column for the feature
+    const featureCol = headers.indexOf(data.feature);
+    if (featureCol < 0) {
+      return createJsonResponse({
+        success: false,
+        message: "Feature tidak ditemukan: " + data.feature,
+      });
+    }
+
+    // Find row for the role
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] === data.role) {
+        sheet.getRange(i + 1, featureCol + 1).setValue(data.enabled);
+        return createJsonResponse({
+          success: true,
+          message: "Permission berhasil diupdate",
+        });
+      }
+    }
+
+    return createJsonResponse({
+      success: false,
+      message: "Role tidak ditemukan: " + data.role,
+    });
+  } catch (error) {
+    return createJsonResponse({
+      success: false,
+      message: "Error: " + error.toString(),
+    });
+  }
+}
+
+/**
+ * Create Permissions sheet with default values
+ */
+function createPermissionsSheet(ss) {
+  const sheet = ss.insertSheet(PERMISSIONS_SHEET_NAME);
+
+  // Add headers
+  sheet.appendRow([
+    "role",
+    "dashboard",
+    "pos",
+    "reports",
+    "finance",
+    "items",
+    "users",
+    "settings",
+  ]);
+
+  // Add default permissions for each role
+  sheet.appendRow(["ADMIN", true, true, true, true, true, true, true]);
+  sheet.appendRow(["MANAGER", true, true, true, true, true, false, false]);
+  sheet.appendRow(["KASIR", true, true, false, false, false, false, false]);
+
+  return sheet;
 }

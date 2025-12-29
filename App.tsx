@@ -5,21 +5,56 @@ import ReportsPage from "./components/ReportsPage";
 import ItemsPage from "./components/ItemsPage";
 import FinancePage from "./components/FinancePage";
 import UsersPage from "./components/UsersPage";
+import SettingsPage from "./components/SettingsPage";
 import DashboardView from "./views/DashboardView";
 import POSView from "./views/POSView";
 import { useAppData } from "./hooks/useAppData";
 import { useCart } from "./hooks/useCart";
 import { ViewState } from "./types";
-import { Settings, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { GOOGLE_SCRIPT_URL } from "./constants";
 
 // Import Auth Module
 import { AuthProvider, useAuth, LoginForm } from "./modules/user";
+
+// Default permissions (fallback)
+const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
+  ADMIN: {
+    dashboard: true,
+    pos: true,
+    reports: true,
+    finance: true,
+    items: true,
+    users: true,
+    settings: true,
+  },
+  MANAGER: {
+    dashboard: true,
+    pos: true,
+    reports: true,
+    finance: true,
+    items: true,
+    users: false,
+    settings: false,
+  },
+  KASIR: {
+    dashboard: true,
+    pos: true,
+    reports: false,
+    finance: false,
+    items: false,
+    users: false,
+    settings: false,
+  },
+};
 
 // Main App Content (after login)
 function MainApp() {
   const { user, logout, isLoading: authLoading } = useAuth();
   const [currentView, setCurrentView] = useState<ViewState>("dashboard");
   const [orderType, setOrderType] = useState<string>("Dine In");
+  const [permissions, setPermissions] =
+    useState<Record<string, Record<string, boolean>>>(DEFAULT_PERMISSIONS);
 
   // Menggunakan Hooks yang dipisahkan
   const {
@@ -33,6 +68,25 @@ function MainApp() {
   const { cart, addToCart, updateQty, updatePrice, removeItem, clearCart } =
     useCart(products, orderType);
 
+  // Fetch permissions from API
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "getPermissions" }),
+        });
+        const data = await response.json();
+        if (data.permissions) {
+          setPermissions(data.permissions);
+        }
+      } catch (err) {
+        console.error("Failed to fetch permissions:", err);
+      }
+    };
+    fetchPermissions();
+  }, []);
+
   // Listener untuk event kustom donasi
   useEffect(() => {
     const handleFlexibleAdd = (e: any) => {
@@ -43,18 +97,13 @@ function MainApp() {
       window.removeEventListener("add-to-cart-flexible", handleFlexibleAdd);
   }, [addToCart]);
 
-  // Check access berdasarkan role
+  // Check access berdasarkan role - now using dynamic permissions
   const checkAccess = (view: ViewState): boolean => {
-    const accessMap: Record<ViewState, string[]> = {
-      dashboard: ["ADMIN", "MANAGER", "KASIR"],
-      pos: ["ADMIN", "MANAGER", "KASIR"],
-      reports: ["ADMIN", "MANAGER"],
-      finance: ["ADMIN", "MANAGER"],
-      items: ["ADMIN", "MANAGER"],
-      users: ["ADMIN"],
-      settings: ["ADMIN"],
-    };
-    return accessMap[view]?.includes(user?.role || "") ?? false;
+    const role = user?.role || "";
+    // ADMIN always has full access
+    if (role === "ADMIN") return true;
+    // For other roles, check permissions from API
+    return permissions[role]?.[view] ?? false;
   };
 
   // Redirect ke view yang diizinkan jika tidak punya akses
@@ -67,7 +116,7 @@ function MainApp() {
         setCurrentView("dashboard");
       }
     }
-  }, [currentView, user]);
+  }, [currentView, user, permissions]);
 
   const renderView = () => {
     // Check access
@@ -120,11 +169,7 @@ function MainApp() {
       case "users":
         return <UsersPage currentUserId={user?.id} />;
       case "settings":
-        return (
-          <div className="flex-1 flex items-center justify-center text-gray-400 bg-white">
-            <Settings size={64} className="opacity-20" />
-          </div>
-        );
+        return <SettingsPage />;
       default:
         return (
           <DashboardView
