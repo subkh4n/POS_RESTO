@@ -25,6 +25,7 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const SESSION_KEY = "pos_user_session";
+const SESSION_DURATION_HOURS = 3; // Session berlaku 3 jam
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
@@ -43,7 +44,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const checkAuth = () => {
     try {
-      const sessionData = localStorage.getItem(SESSION_KEY);
+      // Menggunakan sessionStorage agar session hilang saat browser ditutup
+      const sessionData = sessionStorage.getItem(SESSION_KEY);
       if (sessionData) {
         const session = JSON.parse(sessionData);
         // Check if session is expired
@@ -57,7 +59,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           return;
         } else {
           // Session expired, clear it
-          localStorage.removeItem(SESSION_KEY);
+          sessionStorage.removeItem(SESSION_KEY);
         }
       }
       setState({
@@ -94,16 +96,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       const data: LoginResponse = await response.json();
 
       if (data.success && data.user) {
-        // Create session with 8 hour expiry
+        // Create session with 3 hour expiry
         const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 8);
+        expiresAt.setHours(expiresAt.getHours() + SESSION_DURATION_HOURS);
 
         const session = {
           user: data.user,
           expiresAt: expiresAt.toISOString(),
         };
 
-        localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+        // Menggunakan sessionStorage agar session hilang saat browser ditutup
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
 
         setState({
           isAuthenticated: true,
@@ -139,7 +142,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const logout = () => {
-    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
     setState({
       isAuthenticated: false,
       user: null,
