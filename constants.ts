@@ -58,7 +58,6 @@ export const MOCK_PRODUCTS: Product[] = [
       "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=500&q=80",
   },
 ];
-
 export const GOOGLE_SCRIPT_URL =
   import.meta.env.VITE_GOOGLE_SCRIPT_URL ||
   "https://script.google.com/macros/s/AKfycbybzuPpFV63G36180KM244lq8tExXGtUpJOiNNgy5G5w6jRp6ry4G_cK-6mBunOIfLiOw/exec";
