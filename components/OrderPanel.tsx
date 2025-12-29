@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { submitOrder, getProducts } from "../services/api";
 import { getDisplayImageUrl } from "../utils/format";
+import { useStore } from "../contexts/StoreContext";
 
 interface OrderPanelProps {
   cart: CartItem[];
@@ -52,6 +53,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
   const [selectedTable, setSelectedTable] = useState<string>("Table 1");
 
   const scrollEndRef = useRef<HTMLDivElement>(null);
+  const { settings: storeSettings } = useStore();
 
   const fmt = (n: number) => new Intl.NumberFormat("id-ID").format(n);
   const fmtCurrency = (n: number) =>
@@ -140,8 +142,18 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
 
     printArea.innerHTML = `
       <div style="text-align: center; margin-bottom: 10px; font-family: sans-serif;">
-        <h2 style="margin: 0; font-size: 16px;">FOODCOURT POS</h2>
-        <p style="font-size: 10px; margin: 0;">Nota Transaksi</p>
+        <h2 style="margin: 0; font-size: 16px;">${storeSettings.storeName.toUpperCase()}</h2>
+        ${
+          storeSettings.storeAddress
+            ? `<p style="font-size: 9px; margin: 2px 0;">${storeSettings.storeAddress}</p>`
+            : ""
+        }
+        ${
+          storeSettings.storePhone
+            ? `<p style="font-size: 9px; margin: 2px 0;">Telp: ${storeSettings.storePhone}</p>`
+            : ""
+        }
+        <p style="font-size: 10px; margin: 5px 0 0 0;">Nota Transaksi</p>
       </div>
       <div style="border-bottom: 1px dashed black; margin-bottom: 10px;"></div>
       <div style="font-size: 10px; margin-bottom: 10px; font-family: monospace;">

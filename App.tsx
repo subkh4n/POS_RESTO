@@ -227,11 +227,16 @@ function AppContent() {
   return <MainApp />;
 }
 
-// Root App with AuthProvider
+// Import StoreProvider
+import { StoreProvider } from "./contexts/StoreContext";
+
+// Root App with AuthProvider and StoreProvider
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <StoreProvider>
+        <AppContent />
+      </StoreProvider>
     </AuthProvider>
   );
 }

@@ -58,6 +58,12 @@ function doPost(e) {
     if (action === "updatePermissions") {
       return updatePermissions(data);
     }
+    if (action === "getStoreSettings") {
+      return getStoreSettings();
+    }
+    if (action === "updateStoreSettings") {
+      return updateStoreSettings(data);
+    }
 
     // ========== POS HANDLERS ==========
     if (action === "addOrder") {
@@ -837,6 +843,125 @@ function createPermissionsSheet(ss) {
   sheet.appendRow(["ADMIN", true, true, true, true, true, true, true]);
   sheet.appendRow(["MANAGER", true, true, true, true, true, false, false]);
   sheet.appendRow(["KASIR", true, true, false, false, false, false, false]);
+
+  return sheet;
+}
+
+// ========== STORE SETTINGS MANAGEMENT ==========
+
+const SETTINGS_SHEET_NAME = "Settings";
+const DEFAULT_STORE_SETTINGS = {
+  storeName: "FoodCourt POS",
+  storeAddress: "",
+  storePhone: "",
+  storeTagline: "Sistem Kasir Modern",
+};
+
+/**
+ * Get store settings from Settings sheet
+ */
+function getStoreSettings() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SETTINGS_SHEET_NAME);
+
+    // Create sheet with defaults if not exists
+    if (!sheet) {
+      sheet = createSettingsSheet(ss);
+    }
+
+    if (sheet.getLastRow() < 2) {
+      return createJsonResponse({ settings: DEFAULT_STORE_SETTINGS });
+    }
+
+    const rows = sheet.getDataRange().getValues();
+    const settings = {};
+
+    for (let i = 1; i < rows.length; i++) {
+      const key = rows[i][0];
+      const value = rows[i][1];
+      if (key) {
+        settings[key] = value || "";
+      }
+    }
+
+    // Merge with defaults
+    const result = { ...DEFAULT_STORE_SETTINGS, ...settings };
+
+    return createJsonResponse({ settings: result });
+  } catch (error) {
+    return createJsonResponse({
+      success: false,
+      message: "Error: " + error.toString(),
+      settings: DEFAULT_STORE_SETTINGS,
+    });
+  }
+}
+
+/**
+ * Update store settings
+ * @param {Object} data - { storeName, storeAddress, storePhone, storeTagline }
+ */
+function updateStoreSettings(data) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SETTINGS_SHEET_NAME);
+
+    if (!sheet) {
+      sheet = createSettingsSheet(ss);
+    }
+
+    const rows = sheet.getDataRange().getValues();
+    const keysToUpdate = [
+      "storeName",
+      "storeAddress",
+      "storePhone",
+      "storeTagline",
+    ];
+
+    keysToUpdate.forEach((key) => {
+      if (data[key] !== undefined) {
+        let found = false;
+        for (let i = 1; i < rows.length; i++) {
+          if (rows[i][0] === key) {
+            sheet.getRange(i + 1, 2).setValue(data[key]);
+            found = true;
+            break;
+          }
+        }
+        // If key not found, append new row
+        if (!found) {
+          sheet.appendRow([key, data[key]]);
+        }
+      }
+    });
+
+    return createJsonResponse({
+      success: true,
+      message: "Pengaturan toko berhasil disimpan",
+    });
+  } catch (error) {
+    return createJsonResponse({
+      success: false,
+      message: "Error: " + error.toString(),
+    });
+  }
+}
+
+/**
+ * Create Settings sheet with default values
+ */
+function createSettingsSheet(ss) {
+  const sheet = ss.insertSheet(SETTINGS_SHEET_NAME);
+
+  // Add headers
+  sheet.appendRow(["key", "value"]);
+
+  // Add default store settings
+  sheet.appendRow(["storeName", "FoodCourt POS"]);
+  sheet.appendRow(["storeAddress", ""]);
+  sheet.appendRow(["storePhone", ""]);
+  sheet.appendRow(["storeTagline", "Sistem Kasir Modern"]);
 
   return sheet;
 }
