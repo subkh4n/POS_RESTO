@@ -1013,7 +1013,9 @@ function updateStoreSettings(data) {
 /**
  * Create Settings sheet with default values
  */
+// Create Settings sheet with default values
 function createSettingsSheet(ss) {
+  if (!ss) ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.insertSheet(SETTINGS_SHEET_NAME);
 
   // Add headers
