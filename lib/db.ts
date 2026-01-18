@@ -29,13 +29,15 @@ export const db = {
      */
     list: async (): Promise<QrisPayload[]> => {
       try {
+        console.log("Fetching QRIS from:", GOOGLE_SCRIPT_URL); // DEBUG LOG
         const response = await fetch(GOOGLE_SCRIPT_URL, {
           method: "POST",
-          mode: "cors", // Ensure CORS mode
-          headers: { "Content-Type": "text/plain" }, // GAS often prefers text/plain to avoid preflight issues
+          mode: "cors",
+          headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({ action: "getQrisPayloads" }),
         });
         const data = await response.json();
+        console.log("QRIS Response:", data); // DEBUG LOG
         return data.payloads || [];
       } catch (error) {
         console.error("Failed to fetch QRIS:", error);
