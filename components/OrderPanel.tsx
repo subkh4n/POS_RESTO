@@ -20,6 +20,8 @@ import {
 import { submitOrder, getProducts } from "../services/api";
 import { getDisplayImageUrl } from "../utils/format";
 import { useStore } from "../contexts/StoreContext";
+import { db } from "../lib/db";
+import { generateDynamicQRIS } from "../lib/qris";
 
 interface OrderPanelProps {
   cart: CartItem[];
@@ -43,7 +45,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
   onClose,
 }) => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
-    PaymentMethod.TUNAI
+    PaymentMethod.TUNAI,
   );
   const [cashReceived, setCashReceived] = useState<string>("");
   const [debtorName, setDebtorName] = useState<string>("");
@@ -51,6 +53,9 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [isDonationEnabled, setIsDonationEnabled] = useState(false);
   const [selectedTable, setSelectedTable] = useState<string>("Table 1");
+  const [showQrisModal, setShowQrisModal] = useState(false);
+  const [qrisImage, setQrisImage] = useState<string | null>(null);
+  const [isGeneratingQris, setIsGeneratingQris] = useState(false);
 
   const scrollEndRef = useRef<HTMLDivElement>(null);
   const { settings: storeSettings } = useStore();
@@ -91,14 +96,14 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
     if (change <= 0) return;
     const allProducts = await getProducts();
     const donationItem = allProducts.find(
-      (p) => p.category.toLowerCase() === "donasi"
+      (p) => p.category.toLowerCase() === "donasi",
     );
 
     if (donationItem) {
       window.dispatchEvent(
         new CustomEvent("add-to-cart-flexible", {
           detail: { product: donationItem, price: change },
-        })
+        }),
       );
       // Note: Don't change cashReceived - keep the user's original input
     } else {
@@ -124,7 +129,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
     changeVal: number,
     paymentMethodStr: string,
     tableNum: string,
-    orderTypeStr: string
+    orderTypeStr: string,
   ) => {
     const printArea = document.getElementById("print-area");
     if (!printArea) return;
@@ -173,10 +178,10 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
               item.qty
             }</td>
             <td style="text-align: right; padding: 0 0 4px 0;">${fmt(
-              item.price * item.qty
+              item.price * item.qty,
             )}</td>
           </tr>
-        `
+        `,
           )
           .join("")}
       </table>
@@ -228,6 +233,32 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
       return;
     }
 
+    // QRIS Payment - Show modal with generated QR
+    if (paymentMethod === PaymentMethod.QRIS) {
+      setIsGeneratingQris(true);
+      setShowQrisModal(true);
+      try {
+        const activeQris = await db.qris.getActive();
+        if (!activeQris) {
+          alert("Belum ada QRIS aktif. Silakan upload di Pengaturan > QRIS.");
+          setShowQrisModal(false);
+          setIsGeneratingQris(false);
+          return;
+        }
+        const qrDataUrl = await generateDynamicQRIS(activeQris.payload, total);
+        setQrisImage(qrDataUrl);
+      } catch (error) {
+        alert(
+          "Gagal generate QRIS: " +
+            (error instanceof Error ? error.message : String(error)),
+        );
+        setShowQrisModal(false);
+      } finally {
+        setIsGeneratingQris(false);
+      }
+      return;
+    }
+
     setIsProcessing(true);
     const generatedId = `TRX-${Math.floor(Math.random() * 100000)
       .toString()
@@ -244,8 +275,8 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
           paymentMethod === PaymentMethod.TUNAI
             ? "Saldo Tunai"
             : paymentMethod === PaymentMethod.QRIS
-            ? "Saldo QRIS"
-            : `Piutang: ${debtorName}`;
+              ? "Saldo QRIS"
+              : `Piutang: ${debtorName}`;
       }
 
       return {
@@ -291,7 +322,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
           ? `Piutang: ${debtorName}`
           : paymentMethod,
         selectedTable,
-        orderType
+        orderType,
       );
       setShowSuccessToast(true);
     } else {
@@ -324,6 +355,111 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
             >
               Selesai
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* QRIS Modal */}
+      {showQrisModal && (
+        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md z-[60] flex flex-col items-center justify-center p-6">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-800">
+                Pembayaran QRIS
+              </h3>
+              <button
+                onClick={() => {
+                  setShowQrisModal(false);
+                  setQrisImage(null);
+                }}
+                className="p-1 hover:bg-gray-100 rounded-full"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {isGeneratingQris ? (
+              <div className="py-12">
+                <Loader2
+                  size={32}
+                  className="animate-spin text-blue-500 mx-auto mb-3"
+                />
+                <p className="text-sm text-gray-500">Generating QRIS...</p>
+              </div>
+            ) : qrisImage ? (
+              <>
+                <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 mb-4 inline-block">
+                  <img
+                    src={qrisImage}
+                    alt="QRIS"
+                    className="w-56 h-56 object-contain mx-auto"
+                  />
+                </div>
+                <p className="text-2xl font-black text-gray-800 mb-1">
+                  {fmtCurrency(total)}
+                </p>
+                <p className="text-xs text-gray-500 mb-6">
+                  Scan dengan GoPay, OVO, DANA, atau app lainnya
+                </p>
+                <button
+                  onClick={async () => {
+                    setShowQrisModal(false);
+                    setQrisImage(null);
+                    // Proceed with order after QRIS shown
+                    setIsProcessing(true);
+                    const generatedId = `TRX-${Math.floor(
+                      Math.random() * 100000,
+                    )
+                      .toString()
+                      .padStart(5, "0")}`;
+                    const itemsWithAllocation = cart.map((c) => ({
+                      id: c.id,
+                      name: c.name,
+                      qty: c.qty,
+                      price: c.price,
+                      note: c.note || "",
+                      allocation: "Saldo QRIS",
+                    }));
+                    const payload: OrderPayload = {
+                      orderId: generatedId,
+                      tableNumber: selectedTable,
+                      orderType: orderType,
+                      items: itemsWithAllocation,
+                      subtotal,
+                      tax,
+                      total,
+                      cashReceived: total,
+                      change: 0,
+                      paymentMethod: "QRIS",
+                      timestamp: new Date().toISOString(),
+                    };
+                    const result = await submitOrder(payload);
+                    setIsProcessing(false);
+                    if (result.success) {
+                      printReceipt(
+                        generatedId,
+                        itemsWithAllocation,
+                        subtotal,
+                        tax,
+                        total,
+                        total,
+                        0,
+                        "QRIS",
+                        selectedTable,
+                        orderType,
+                      );
+                      setShowSuccessToast(true);
+                    } else {
+                      alert("Gagal menyimpan transaksi.");
+                    }
+                  }}
+                  className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={18} />
+                  Konfirmasi Pembayaran
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
       )}

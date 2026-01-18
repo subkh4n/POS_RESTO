@@ -102,4 +102,5 @@ export type ViewState =
   | "users"
   | "customers"
   | "onlineOrders"
-  | "onlinePayments";
+  | "onlinePayments"
+  | "qris";

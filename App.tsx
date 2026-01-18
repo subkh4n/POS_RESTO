@@ -8,6 +8,7 @@ import UsersPage from "./components/UsersPage";
 import OnlineOrdersPage from "./components/OnlineOrdersPage";
 import CustomersPage from "./components/CustomersPage";
 import SettingsPage from "./components/SettingsPage";
+import AdminQrisManager from "./components/AdminQrisManager";
 import DashboardView from "./views/DashboardView";
 import POSView from "./views/POSView";
 import { useAppData } from "./hooks/useAppData";
@@ -29,6 +30,7 @@ const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
     items: true,
     users: true,
     settings: true,
+    qris: true,
   },
   MANAGER: {
     dashboard: true,
@@ -174,6 +176,8 @@ function MainApp() {
         return <CustomersPage />;
       case "onlineOrders":
         return <OnlineOrdersPage />;
+      case "qris":
+        return <AdminQrisManager />;
       case "settings":
         return <SettingsPage />;
       default:

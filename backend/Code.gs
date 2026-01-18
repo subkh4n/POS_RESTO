@@ -65,6 +65,20 @@ function doPost(e) {
       return updateStoreSettings(data);
     }
 
+    // ========== QRIS HANDLERS ==========
+    if (action === "getQrisPayloads") {
+      return getQrisPayloads();
+    }
+    if (action === "addQrisPayload") {
+      return addQrisPayload(data);
+    }
+    if (action === "setActiveQris") {
+      return setActiveQris(data);
+    }
+    if (action === "deleteQrisPayload") {
+      return deleteQrisPayload(data);
+    }
+
     // ========== ONLINE ORDER HANDLERS (functions in online_order.gs) ==========
     if (action === "customerRegister") {
       return handleCustomerRegister(data);
@@ -228,7 +242,7 @@ function doPost(e) {
           data.name,
           "UPLOAD_PRODUCT",
           data.stock,
-          "Menu baru diunggah oleh admin"
+          "Menu baru diunggah oleh admin",
         );
       }
 
@@ -270,7 +284,7 @@ function doPost(e) {
               data.name,
               "UPDATE_STOCK",
               stockDiff,
-              "Update data barang via Item Management"
+              "Update data barang via Item Management",
             );
           }
 
@@ -372,7 +386,7 @@ function doPost(e) {
             productName,
             actionType,
             stockDiff,
-            notes
+            notes,
           );
 
           return createJsonResponse({
@@ -421,7 +435,7 @@ function logStockChange(
   productName,
   actionType,
   stockValue,
-  notes
+  notes,
 ) {
   try {
     let logSheet = ss.getSheetByName("Stock_Log");
@@ -478,7 +492,7 @@ function updateProductStock(items) {
           data[i][1],
           "SALE_OUT",
           -item.qty,
-          "Penjualan via POS"
+          "Penjualan via POS",
         );
       }
     }
@@ -553,7 +567,7 @@ function getModifiers() {
   // Attach items to their groups
   groups.forEach((group) => {
     group.items = items.filter(
-      (item) => item.groupId === group.id && item.available
+      (item) => item.groupId === group.id && item.available,
     );
   });
 
@@ -707,7 +721,7 @@ function uploadImageToDrive(base64Data, filename) {
       // Make folder publicly accessible
       folder.setSharing(
         DriveApp.Access.ANYONE_WITH_LINK,
-        DriveApp.Permission.VIEW
+        DriveApp.Permission.VIEW,
       );
     }
 
@@ -734,7 +748,7 @@ function uploadImageToDrive(base64Data, filename) {
 
 function createJsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(
-    ContentService.MimeType.JSON
+    ContentService.MimeType.JSON,
   );
 }
 
@@ -1010,4 +1024,153 @@ function createSettingsSheet(ss) {
   sheet.appendRow(["storeTagline", "Sistem Kasir Modern"]);
 
   return sheet;
+}
+
+// ========== QRIS MANAGEMENT ==========
+
+const QRIS_SHEET_NAME = "QrisPayloads";
+
+/**
+ * Get all QRIS payloads
+ * Sheet structure: A=id, B=name, C=payload, D=is_active, E=created_at
+ */
+function getQrisPayloads() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(QRIS_SHEET_NAME);
+
+    if (!sheet || sheet.getLastRow() < 2) {
+      return createJsonResponse({ payloads: [] });
+    }
+
+    const rows = sheet.getDataRange().getValues();
+    const payloads = rows.slice(1).map((row) => ({
+      id: String(row[0]),
+      name: String(row[1]),
+      payload: String(row[2]),
+      is_active: row[3] === true || row[3] === "TRUE",
+      created_at: row[4]
+        ? new Date(row[4]).toISOString()
+        : new Date().toISOString(),
+    }));
+
+    return createJsonResponse({ payloads: payloads });
+  } catch (error) {
+    return createJsonResponse({
+      payloads: [],
+      error: error.toString(),
+    });
+  }
+}
+
+/**
+ * Add new QRIS payload
+ * @param {Object} data - { name: string, payload: string }
+ */
+function addQrisPayload(data) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(QRIS_SHEET_NAME);
+
+    // Create sheet if not exists
+    if (!sheet) {
+      sheet = ss.insertSheet(QRIS_SHEET_NAME);
+      sheet.appendRow(["id", "name", "payload", "is_active", "created_at"]);
+    }
+
+    const id = "qris-" + Date.now();
+    const timestamp = new Date();
+    const isActive = sheet.getLastRow() < 2; // First entry is active by default
+
+    sheet.appendRow([id, data.name, data.payload, isActive, timestamp]);
+
+    return createJsonResponse({
+      success: true,
+      id: id,
+      message: "QRIS berhasil ditambahkan",
+    });
+  } catch (error) {
+    return createJsonResponse({
+      success: false,
+      message: "Error: " + error.toString(),
+    });
+  }
+}
+
+/**
+ * Set a QRIS payload as active (deactivates others)
+ * @param {Object} data - { id: string }
+ */
+function setActiveQris(data) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(QRIS_SHEET_NAME);
+
+    if (!sheet || sheet.getLastRow() < 2) {
+      return createJsonResponse({
+        success: false,
+        message: "Data QRIS tidak ditemukan",
+      });
+    }
+
+    const rows = sheet.getDataRange().getValues();
+    const targetId = String(data.id).trim();
+
+    // Update all rows: set target to active, others to inactive
+    for (let i = 1; i < rows.length; i++) {
+      const isTarget = String(rows[i][0]).trim() === targetId;
+      sheet.getRange(i + 1, 4).setValue(isTarget);
+    }
+
+    return createJsonResponse({
+      success: true,
+      message: "QRIS aktif berhasil diubah",
+    });
+  } catch (error) {
+    return createJsonResponse({
+      success: false,
+      message: "Error: " + error.toString(),
+    });
+  }
+}
+
+/**
+ * Delete a QRIS payload
+ * @param {Object} data - { id: string }
+ */
+function deleteQrisPayload(data) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(QRIS_SHEET_NAME);
+
+    if (!sheet || sheet.getLastRow() < 2) {
+      return createJsonResponse({
+        success: false,
+        message: "Data QRIS tidak ditemukan",
+      });
+    }
+
+    const rows = sheet.getDataRange().getValues();
+    const targetId = String(data.id).trim();
+
+    for (let i = rows.length - 1; i >= 1; i--) {
+      if (String(rows[i][0]).trim() === targetId) {
+        sheet.deleteRow(i + 1);
+        return createJsonResponse({
+          success: true,
+          message: "QRIS berhasil dihapus",
+        });
+      }
+    }
+
+    return createJsonResponse({
+      success: false,
+      message: "ID QRIS tidak ditemukan",
+    });
+  } catch (error) {
+    return createJsonResponse({
+      success: false,
+      message: "Error: " + error.toString(),
+    });
+  }
 }

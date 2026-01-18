@@ -1,4 +1,4 @@
-// Settings Page - Tab-based Layout with Umum, Pengguna, Tentang
+// Settings Page - Tab-based Layout with Umum, Pengguna, QRIS, Tentang
 
 import React, { useState, useEffect } from "react";
 import {
@@ -17,11 +17,17 @@ import {
   Save,
   Building2,
   Users,
+  QrCode,
+  Upload,
+  Trash2,
+  Check,
 } from "lucide-react";
 import { useAuth } from "../modules/user";
 import { GOOGLE_SCRIPT_URL } from "../constants";
+import { db, QrisPayload } from "../lib/db";
+import { decodeQRISFromImage } from "../lib/qris";
 
-type TabType = "umum" | "pengguna" | "tentang";
+type TabType = "umum" | "pengguna" | "qris" | "tentang";
 
 // Permission configuration
 const PERMISSIONS = [
@@ -93,8 +99,81 @@ const SettingsPage: React.FC = () => {
   const tabs = [
     { id: "umum" as TabType, label: "Umum", icon: Building2 },
     { id: "pengguna" as TabType, label: "Pengguna", icon: Users },
+    { id: "qris" as TabType, label: "QRIS", icon: QrCode },
     { id: "tentang" as TabType, label: "Tentang", icon: Info },
   ];
+
+  // QRIS state
+  const [qrisList, setQrisList] = useState<QrisPayload[]>([]);
+  const [isLoadingQris, setIsLoadingQris] = useState(false);
+  const [isUploadingQris, setIsUploadingQris] = useState(false);
+  const [testAmount, setTestAmount] = useState<string>("10000");
+  const [generatedQR, setGeneratedQR] = useState<string | null>(null);
+
+  const loadQrisData = async () => {
+    setIsLoadingQris(true);
+    try {
+      const data = await db.qris.list();
+      setQrisList(data);
+    } catch (error) {
+      console.error("Failed to load QRIS:", error);
+    } finally {
+      setIsLoadingQris(false);
+    }
+  };
+
+  const handleQrisUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingQris(true);
+    try {
+      const payload = await decodeQRISFromImage(file);
+      if (!payload) {
+        alert("QRIS tidak terdeteksi. Pastikan gambar jelas.");
+        return;
+      }
+      const name = prompt("Nama QRIS:", "QRIS Toko");
+      if (name) {
+        await db.qris.create(name, payload);
+        await loadQrisData();
+        setSuccessMsg("QRIS berhasil ditambahkan!");
+        setTimeout(() => setSuccessMsg(null), 3000);
+      }
+    } catch (err) {
+      setError(
+        "Gagal decode QRIS: " +
+          (err instanceof Error ? err.message : String(err)),
+      );
+    } finally {
+      setIsUploadingQris(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleSetActiveQris = async (id: string) => {
+    await db.qris.setActive(id);
+    await loadQrisData();
+  };
+
+  const handleDeleteQris = async (id: string) => {
+    if (!confirm("Hapus QRIS ini?")) return;
+    await db.qris.delete(id);
+    await loadQrisData();
+  };
+
+  const handleTestGenerate = async (payload: string) => {
+    try {
+      const { generateDynamicQRIS } = await import("../lib/qris");
+      const amount = parseInt(testAmount) || 10000;
+      const qrDataUrl = await generateDynamicQRIS(payload, amount);
+      setGeneratedQR(qrDataUrl);
+    } catch (error) {
+      alert(
+        "Gagal generate: " +
+          (error instanceof Error ? error.message : String(error)),
+      );
+    }
+  };
 
   // Fetch functions
   const fetchPermissions = async () => {
@@ -155,7 +234,7 @@ const SettingsPage: React.FC = () => {
   const handleTogglePermission = async (
     role: string,
     feature: string,
-    currentValue: boolean
+    currentValue: boolean,
   ) => {
     if (role === "ADMIN") return;
     const savingKey = `${role}-${feature}`;
@@ -196,6 +275,7 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     fetchPermissions();
     fetchStoreSettings();
+    loadQrisData();
   }, []);
 
   const hasAccess = (role: string, feature: string) =>
@@ -383,7 +463,7 @@ const SettingsPage: React.FC = () => {
                                     handleTogglePermission(
                                       role,
                                       perm.key,
-                                      hasAccess(role, perm.key)
+                                      hasAccess(role, perm.key),
                                     )
                                   }
                                   disabled={isSaving === `${role}-${perm.key}`}
@@ -471,6 +551,189 @@ const SettingsPage: React.FC = () => {
           </div>
         );
 
+      case "qris":
+        return (
+          <div className="space-y-6">
+            {/* Upload Section */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Upload size={20} className="text-blue-500" />
+                <h3 className="font-bold text-gray-800">Upload QRIS Static</h3>
+              </div>
+              <p className="text-sm text-gray-500 mb-4">
+                Upload gambar QRIS Static dari merchant (GoPay, OVO, DANA, dll).
+                Sistem akan decode dan menyimpan payload untuk generate QRIS
+                dinamis.
+              </p>
+              <label className="block">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleQrisUpload}
+                  disabled={isUploadingQris}
+                  className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2.5 file:px-5
+                    file:rounded-lg file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-blue-600 file:text-white
+                    hover:file:bg-blue-700 file:cursor-pointer
+                    file:transition-colors disabled:opacity-50"
+                />
+              </label>
+              {isUploadingQris && (
+                <p className="text-sm text-blue-600 mt-3 flex items-center gap-2">
+                  <Loader2 size={14} className="animate-spin" />
+                  Membaca QRIS...
+                </p>
+              )}
+            </div>
+
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* QRIS List */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <QrCode size={20} className="text-purple-500" />
+                  <h3 className="font-bold text-gray-800">
+                    Daftar QRIS Tersimpan
+                  </h3>
+                </div>
+
+                {isLoadingQris ? (
+                  <div className="py-8 text-center">
+                    <Loader2
+                      size={24}
+                      className="animate-spin text-gray-400 mx-auto"
+                    />
+                  </div>
+                ) : qrisList.length === 0 ? (
+                  <div className="py-8 text-center text-gray-400 border-2 border-dashed rounded-xl">
+                    <QrCode size={32} className="mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Belum ada QRIS tersimpan</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {qrisList.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`p-4 border rounded-xl ${
+                          item.is_active
+                            ? "border-green-500 bg-green-50"
+                            : "border-gray-200"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-semibold text-gray-800">
+                                {item.name}
+                              </p>
+                              {item.is_active && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-green-700 bg-green-100 rounded-full">
+                                  <Check size={12} /> Aktif
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-400 font-mono truncate mt-1">
+                              {item.payload.substring(0, 35)}...
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              Dibuat:{" "}
+                              {new Date(item.created_at).toLocaleDateString(
+                                "id-ID",
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            {!item.is_active && (
+                              <button
+                                onClick={() => handleSetActiveQris(item.id)}
+                                className="px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                              >
+                                Set Aktif
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleTestGenerate(item.payload)}
+                              className="px-3 py-1.5 text-xs font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                            >
+                              Test
+                            </button>
+                            <button
+                              onClick={() => handleDeleteQris(item.id)}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg flex items-center justify-center"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Test Generator */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h3 className="font-bold text-gray-800 mb-4">Test Generator</h3>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nominal Test (Rp)
+                  </label>
+                  <input
+                    type="number"
+                    value={testAmount}
+                    onChange={(e) => setTestAmount(e.target.value)}
+                    placeholder="Contoh: 50000"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-2.5 
+                      focus:border-blue-500 focus:ring-2 focus:ring-blue-200 
+                      transition-all outline-none"
+                  />
+                </div>
+
+                {generatedQR ? (
+                  <div className="text-center py-4">
+                    <div className="inline-block p-4 bg-white border-2 border-gray-200 rounded-xl shadow-inner">
+                      <img
+                        src={generatedQR}
+                        alt="QRIS Generated"
+                        className="mx-auto w-48 h-48 object-contain"
+                      />
+                    </div>
+                    <p className="text-lg font-bold text-gray-800 mt-4">
+                      Rp {parseInt(testAmount || "0").toLocaleString("id-ID")}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Scan dengan aplikasi dompet digital
+                    </p>
+                    <button
+                      onClick={() => setGeneratedQR(null)}
+                      className="mt-4 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
+                    >
+                      Reset Preview
+                    </button>
+                  </div>
+                ) : (
+                  <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 text-gray-400">
+                    <QrCode size={40} className="mb-3 opacity-50" />
+                    <p className="text-sm">Pilih "Test" pada salah satu QRIS</p>
+                    <p className="text-xs">untuk melihat preview</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <p className="text-sm text-blue-700">
+                <strong>Cara kerja:</strong> QRIS yang diset aktif akan
+                digunakan saat checkout. Sistem akan otomatis inject nominal
+                transaksi ke QR Code.
+              </p>
+            </div>
+          </div>
+        );
+
       case "tentang":
         return (
           <div className="space-y-6">
@@ -538,23 +801,6 @@ const SettingsPage: React.FC = () => {
             </button>
           ))}
         </nav>
-
-        {/* User Profile at Bottom */}
-        <div className="mt-auto pt-4 border-t border-slate-700">
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center text-white text-sm font-bold">
-              {user?.name?.charAt(0).toUpperCase() || "U"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">
-                {user?.name}
-              </p>
-              <p className="text-slate-400 text-xs truncate">
-                @{user?.username}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Content Area */}

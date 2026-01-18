@@ -18,6 +18,7 @@ import {
   PieChart,
   User,
   UserCheck,
+  QrCode,
 } from "lucide-react";
 import { ViewState } from "../types";
 import { useStore } from "../contexts/StoreContext";
@@ -123,7 +124,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const toggleMenu = (label: string) => {
     setExpandedMenus((prev) =>
-      prev.includes(label) ? prev.filter((m) => m !== label) : [...prev, label]
+      prev.includes(label) ? prev.filter((m) => m !== label) : [...prev, label],
     );
   };
 
@@ -313,3 +314,4 @@ const Sidebar: React.FC<SidebarProps> = ({
 };
 
 export default Sidebar;
+
