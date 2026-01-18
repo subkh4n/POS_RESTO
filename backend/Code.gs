@@ -31,6 +31,22 @@ function doPost(e) {
 
     const data = JSON.parse(contents);
     const action = data.action;
+    Logger.log("Received Action: " + action); // DEBUG LOG
+
+    // ========== QRIS HANDLERS (PRIORITY) ==========
+    if (action === "readQris") {
+      return getQrisPayloads();
+    }
+    if (action === "createQris") {
+      return addQrisPayload(data);
+    }
+    if (action === "activateQris") {
+      return setActiveQris(data);
+    }
+    if (action === "deleteQris") {
+      return deleteQrisPayload(data);
+    }
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
     // ========== USER AUTH HANDLERS (functions in user.gs) ==========
@@ -63,20 +79,6 @@ function doPost(e) {
     }
     if (action === "updateStoreSettings") {
       return updateStoreSettings(data);
-    }
-
-    // ========== QRIS HANDLERS ==========
-    if (action === "getQrisPayloads") {
-      return getQrisPayloads();
-    }
-    if (action === "addQrisPayload") {
-      return addQrisPayload(data);
-    }
-    if (action === "setActiveQris") {
-      return setActiveQris(data);
-    }
-    if (action === "deleteQrisPayload") {
-      return deleteQrisPayload(data);
     }
 
     // ========== ONLINE ORDER HANDLERS (functions in online_order.gs) ==========

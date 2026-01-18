@@ -34,7 +34,7 @@ export const db = {
           method: "POST",
           mode: "cors",
           headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ action: "getQrisPayloads" }),
+          body: JSON.stringify({ action: "readQris" }),
         });
         const data = await response.json();
         console.log("QRIS Response:", data); // DEBUG LOG
@@ -54,7 +54,7 @@ export const db = {
           method: "POST",
           mode: "cors",
           headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ action: "addQrisPayload", name, payload }),
+          body: JSON.stringify({ action: "createQris", name, payload }),
         });
         const data = await response.json();
         if (!data.success) throw new Error(data.message);
@@ -82,7 +82,7 @@ export const db = {
           method: "POST",
           mode: "cors",
           headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ action: "setActiveQris", id }),
+          body: JSON.stringify({ action: "activateQris", id }),
         });
         const data = await response.json();
         if (!data.success) throw new Error(data.message);
@@ -112,7 +112,7 @@ export const db = {
           method: "POST",
           mode: "cors",
           headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ action: "deleteQrisPayload", id }),
+          body: JSON.stringify({ action: "deleteQris", id }),
         });
         const data = await response.json();
         if (!data.success) throw new Error(data.message);
