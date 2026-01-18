@@ -60,4 +60,4 @@ export const MOCK_PRODUCTS: Product[] = [
 ];
 export const GOOGLE_SCRIPT_URL =
   import.meta.env.VITE_GOOGLE_SCRIPT_URL ||
-  "https://script.google.com/macros/s/AKfycbwuByEoqCuFjXhnWgkIdmyRQ-zFAFvLRhci_GzX8Ol_Jdxq5-0rOHe584yU2goWmTO0XA/exec";
+  "https://script.google.com/macros/s/AKfycbypyJiQ-9tHDu2mwPftXNpzoMEoOt8FjS6q88C0_vC8iITHDVZEtM30pKj8gtfu0AlP0Q/exec";
