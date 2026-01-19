@@ -13,6 +13,15 @@ export default defineConfig(({ mode }) => {
     build: {
       target: "es2015",
       minify: "esbuild",
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              return "vendor";
+            }
+          },
+        },
+      },
     },
     esbuild: {
       target: "es2015",
