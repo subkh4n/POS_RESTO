@@ -108,7 +108,6 @@ const postToScript = async (payload: any) => {
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      mode: "cors",
       redirect: "follow",
       body: JSON.stringify(payload),
     });

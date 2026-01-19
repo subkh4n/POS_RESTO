@@ -27,12 +27,15 @@ export const db = {
     /**
      * Get all QRIS payloads
      */
+    /**
+     * Get all QRIS payloads
+     */
     list: async (): Promise<QrisPayload[]> => {
       try {
         console.log("Fetching QRIS from:", GOOGLE_SCRIPT_URL); // DEBUG LOG
         const response = await fetch(GOOGLE_SCRIPT_URL, {
           method: "POST",
-          mode: "cors",
+          redirect: "follow",
           headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({ action: "readQris" }),
         });
@@ -52,7 +55,7 @@ export const db = {
       try {
         const response = await fetch(GOOGLE_SCRIPT_URL, {
           method: "POST",
-          mode: "cors",
+          redirect: "follow",
           headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({ action: "createQris", name, payload }),
         });
@@ -80,7 +83,7 @@ export const db = {
       try {
         const response = await fetch(GOOGLE_SCRIPT_URL, {
           method: "POST",
-          mode: "cors",
+          redirect: "follow",
           headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({ action: "activateQris", id }),
         });
@@ -110,7 +113,7 @@ export const db = {
       try {
         const response = await fetch(GOOGLE_SCRIPT_URL, {
           method: "POST",
-          mode: "cors",
+          redirect: "follow",
           headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({ action: "deleteQris", id }),
         });
