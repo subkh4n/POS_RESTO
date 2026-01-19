@@ -26,6 +26,7 @@ import { useAuth } from "../modules/user";
 import { GOOGLE_SCRIPT_URL } from "../constants";
 import { db, QrisPayload } from "../lib/db";
 import { decodeQRISFromImage } from "../lib/qris";
+import { toast } from "sonner";
 
 type TabType = "umum" | "pengguna" | "qris" | "tentang";
 
@@ -129,7 +130,7 @@ const SettingsPage: React.FC = () => {
     try {
       const payload = await decodeQRISFromImage(file);
       if (!payload) {
-        alert("QRIS tidak terdeteksi. Pastikan gambar jelas.");
+        toast.error("QRIS tidak terdeteksi. Pastikan gambar jelas.");
         return;
       }
       const name = prompt("Nama QRIS:", "QRIS Toko");
@@ -168,9 +169,9 @@ const SettingsPage: React.FC = () => {
       const qrDataUrl = await generateDynamicQRIS(payload, amount);
       setGeneratedQR(qrDataUrl);
     } catch (error) {
-      alert(
+      toast.error(
         "Gagal generate: " +
-          (error instanceof Error ? error.message : String(error)),
+          (error instanceof Error ? error.message : String(error))
       );
     }
   };
@@ -685,8 +686,8 @@ const SettingsPage: React.FC = () => {
                     value={testAmount}
                     onChange={(e) => setTestAmount(e.target.value)}
                     placeholder="Contoh: 50000"
-                    className="block w-full rounded-lg border border-gray-300 px-4 py-2.5 
-                      focus:border-blue-500 focus:ring-2 focus:ring-blue-200 
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-2.5
+                      focus:border-blue-500 focus:ring-2 focus:ring-blue-200
                       transition-all outline-none"
                   />
                 </div>

@@ -22,6 +22,7 @@ import { getDisplayImageUrl } from "../utils/format";
 import { useStore } from "../contexts/StoreContext";
 import { db } from "../lib/db";
 import { generateDynamicQRIS } from "../lib/qris";
+import { toast } from "sonner";
 
 interface OrderPanelProps {
   cart: CartItem[];
@@ -107,7 +108,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
       );
       // Note: Don't change cashReceived - keep the user's original input
     } else {
-      alert("Item Donasi tidak ditemukan.");
+      toast.error("Item Donasi tidak ditemukan.");
     }
   };
 
@@ -225,11 +226,11 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     if (paymentMethod === PaymentMethod.TUNAI && cashValue < total) {
-      alert("Uang tunai tidak cukup!");
+      toast.warning("Uang tunai tidak cukup!");
       return;
     }
     if (paymentMethod === PaymentMethod.PIUTANG && !debtorName.trim()) {
-      alert("Nama penghutang wajib diisi!");
+      toast.warning("Nama penghutang wajib diisi!");
       return;
     }
 
@@ -240,7 +241,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
       try {
         const activeQris = await db.qris.getActive();
         if (!activeQris) {
-          alert("Belum ada QRIS aktif. Silakan upload di Pengaturan > QRIS.");
+          toast.warning("Belum ada QRIS aktif. Silakan upload di Pengaturan > QRIS.");
           setShowQrisModal(false);
           setIsGeneratingQris(false);
           return;
@@ -248,9 +249,9 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
         const qrDataUrl = await generateDynamicQRIS(activeQris.payload, total);
         setQrisImage(qrDataUrl);
       } catch (error) {
-        alert(
+        toast.error(
           "Gagal generate QRIS: " +
-            (error instanceof Error ? error.message : String(error)),
+            (error instanceof Error ? error.message : String(error))
         );
         setShowQrisModal(false);
       } finally {
@@ -326,7 +327,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
       );
       setShowSuccessToast(true);
     } else {
-      alert("Gagal menyimpan transaksi.");
+      toast.error("Gagal menyimpan transaksi.");
     }
   };
 
@@ -450,7 +451,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
                       );
                       setShowSuccessToast(true);
                     } else {
-                      alert("Gagal menyimpan transaksi.");
+                      toast.error("Gagal menyimpan transaksi.");
                     }
                   }}
                   className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 flex items-center justify-center gap-2"

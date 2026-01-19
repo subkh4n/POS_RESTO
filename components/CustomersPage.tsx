@@ -5,22 +5,55 @@ import {
   Edit,
   Trash2,
   Key,
-  ToggleLeft,
-  ToggleRight,
   Phone,
   Mail,
-  MapPin,
-  Calendar,
-  Clock,
   Loader2,
   RefreshCw,
-  X,
-  Check,
-  UserPlus,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { GOOGLE_SCRIPT_URL } from "../constants";
+import { toast } from "sonner";
+
+// shadcn/ui components
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Customer {
   id: string;
@@ -40,14 +73,13 @@ const CustomersPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null
-  );
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Customer>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [deleteDialogId, setDeleteDialogId] = useState<string | null>(null);
 
   // Dummy data for testing
   const DUMMY_CUSTOMERS: Customer[] = [
@@ -104,6 +136,7 @@ const CustomersPage: React.FC = () => {
       }
     } catch (error) {
       console.error("Failed to fetch customers:", error);
+      toast.error("Gagal memuat data pelanggan");
     } finally {
       setIsLoading(false);
     }
@@ -120,6 +153,7 @@ const CustomersPage: React.FC = () => {
           c.id === customer.id ? { ...c, isActive: !c.isActive } : c
         )
       );
+      toast.success(`Status ${customer.name} berhasil diubah`);
       return;
     }
 
@@ -135,19 +169,21 @@ const CustomersPage: React.FC = () => {
       const data = await response.json();
       if (data.success) {
         fetchCustomers();
+        toast.success("Status berhasil diubah");
       } else {
-        alert(data.message);
+        toast.error(data.message);
       }
     } catch (error) {
       console.error("Failed to toggle status:", error);
+      toast.error("Gagal mengubah status");
     }
   };
 
   const handleDelete = async (customer: Customer) => {
-    if (!confirm(`Hapus customer "${customer.name}"?`)) return;
-
     if (useDummy) {
       setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
+      toast.success(`Pelanggan ${customer.name} berhasil dihapus`);
+      setDeleteDialogId(null);
       return;
     }
 
@@ -159,11 +195,14 @@ const CustomersPage: React.FC = () => {
       const data = await response.json();
       if (data.success) {
         fetchCustomers();
+        toast.success("Pelanggan berhasil dihapus");
+        setDeleteDialogId(null);
       } else {
-        alert(data.message);
+        toast.error(data.message);
       }
     } catch (error) {
       console.error("Failed to delete:", error);
+      toast.error("Gagal menghapus pelanggan");
     }
   };
 
@@ -177,6 +216,7 @@ const CustomersPage: React.FC = () => {
           c.id === selectedCustomer.id ? { ...c, ...editForm } : c
         )
       );
+      toast.success("Data pelanggan berhasil diperbarui");
       setIsEditing(false);
       setSelectedCustomer(null);
       setIsSubmitting(false);
@@ -195,13 +235,15 @@ const CustomersPage: React.FC = () => {
       const data = await response.json();
       if (data.success) {
         fetchCustomers();
+        toast.success("Data pelanggan berhasil diperbarui");
         setIsEditing(false);
         setSelectedCustomer(null);
       } else {
-        alert(data.message);
+        toast.error(data.message);
       }
     } catch (error) {
       console.error("Failed to update:", error);
+      toast.error("Gagal memperbarui data");
     } finally {
       setIsSubmitting(false);
     }
@@ -212,7 +254,7 @@ const CustomersPage: React.FC = () => {
     setIsSubmitting(true);
 
     if (useDummy) {
-      alert("Password berhasil direset (demo)");
+      toast.success("Password berhasil direset (demo)");
       setShowResetPassword(false);
       setNewPassword("");
       setIsSubmitting(false);
@@ -230,14 +272,15 @@ const CustomersPage: React.FC = () => {
       });
       const data = await response.json();
       if (data.success) {
-        alert("Password berhasil direset");
+        toast.success("Password berhasil direset");
         setShowResetPassword(false);
         setNewPassword("");
       } else {
-        alert(data.message);
+        toast.error(data.message);
       }
     } catch (error) {
       console.error("Failed to reset password:", error);
+      toast.error("Gagal reset password");
     } finally {
       setIsSubmitting(false);
     }
@@ -282,44 +325,56 @@ const CustomersPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-cyan-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Memuat data pelanggan...</p>
+      <div className="flex-1 p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-40" />
+          </div>
+          <Skeleton className="h-9 w-24" />
         </div>
+        <Skeleton className="h-10 w-80" />
+        <Card>
+          <CardContent className="p-0">
+            <div className="space-y-4 p-6">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-8 w-20" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 bg-gray-50 overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
+    <TooltipProvider>
+      <div className="flex-1 p-6 space-y-6 overflow-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">
-              Manajemen Pelanggan
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <h1 className="text-2xl font-bold tracking-tight">Manajemen Pelanggan</h1>
+            <p className="text-muted-foreground">
               {customers.length} pelanggan terdaftar
             </p>
           </div>
-          <button
-            onClick={fetchCustomers}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
-          >
-            <RefreshCw size={18} />
+          <Button variant="outline" onClick={fetchCustomers}>
+            <RefreshCw className="h-4 w-4" />
             Refresh
-          </button>
+          </Button>
         </div>
 
         {/* Search */}
         <div className="relative max-w-md">
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          <input
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
             type="text"
             placeholder="Cari nama, HP, atau email..."
             value={searchQuery}
@@ -327,337 +382,324 @@ const CustomersPage: React.FC = () => {
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            className="pl-10"
           />
         </div>
-      </div>
 
-      {/* Table */}
-      <div className="flex-1 overflow-auto p-6">
+        {/* Table */}
         {paginatedCustomers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-            <Users size={64} className="mb-4 opacity-50" />
-            <p className="text-lg">Tidak ada pelanggan</p>
-          </div>
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <Users className="h-16 w-16 mb-4 opacity-50" />
+              <p className="text-lg font-medium">Tidak ada pelanggan</p>
+              <p className="text-sm">Data pelanggan akan muncul di sini</p>
+            </CardContent>
+          </Card>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                    Pelanggan
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                    Kontak
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                    Alamat
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                    Terdaftar
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                    Login Terakhir
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {paginatedCustomers.map((customer) => (
-                  <tr
-                    key={customer.id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center">
-                          <span className="text-cyan-700 font-semibold">
-                            {customer.name.charAt(0).toUpperCase()}
-                          </span>
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Pelanggan</TableHead>
+                    <TableHead>Kontak</TableHead>
+                    <TableHead className="hidden md:table-cell">Alamat</TableHead>
+                    <TableHead className="hidden lg:table-cell">Terdaftar</TableHead>
+                    <TableHead className="hidden lg:table-cell">Login Terakhir</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-center">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedCustomers.map((customer) => (
+                    <TableRow key={customer.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar>
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {customer.name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{customer.name}</p>
+                            <p className="text-xs text-muted-foreground">{customer.id}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-slate-800">
-                            {customer.name}
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="text-sm flex items-center gap-1">
+                            <Phone className="h-3 w-3" /> {customer.phone}
                           </p>
-                          <p className="text-xs text-gray-400">{customer.id}</p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Mail className="h-3 w-3" /> {customer.email || "-"}
+                          </p>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-sm text-gray-600 flex items-center gap-1">
-                        <Phone size={12} /> {customer.phone}
-                      </p>
-                      <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
-                        <Mail size={12} /> {customer.email || "-"}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-sm text-gray-600 truncate max-w-[200px]">
-                        {customer.address || "-"}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-sm text-gray-600">
-                        {formatDate(customer.createdAt)}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-sm text-gray-600">
-                        {formatDateTime(customer.lastLogin)}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => handleToggleActive(customer)}
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-                          customer.isActive
-                            ? "bg-green-100 text-green-700 hover:bg-green-200"
-                            : "bg-red-100 text-red-700 hover:bg-red-200"
-                        }`}
-                      >
-                        {customer.isActive ? (
-                          <>
-                            <ToggleRight size={14} /> Aktif
-                          </>
-                        ) : (
-                          <>
-                            <ToggleLeft size={14} /> Nonaktif
-                          </>
-                        )}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => {
-                            setSelectedCustomer(customer);
-                            setEditForm(customer);
-                            setIsEditing(true);
-                          }}
-                          className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedCustomer(customer);
-                            setShowResetPassword(true);
-                          }}
-                          className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                          title="Reset Password"
-                        >
-                          <Key size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(customer)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Hapus"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <p className="text-sm text-muted-foreground truncate max-w-[200px]">
+                          {customer.address || "-"}
+                        </p>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <p className="text-sm">{formatDate(customer.createdAt)}</p>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <p className="text-sm text-muted-foreground">
+                          {formatDateTime(customer.lastLogin)}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={customer.isActive}
+                            onCheckedChange={() => handleToggleActive(customer)}
+                          />
+                          <Badge variant={customer.isActive ? "default" : "secondary"}>
+                            {customer.isActive ? "Aktif" : "Nonaktif"}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => {
+                                  setSelectedCustomer(customer);
+                                  setEditForm(customer);
+                                  setIsEditing(true);
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => {
+                                  setSelectedCustomer(customer);
+                                  setShowResetPassword(true);
+                                }}
+                              >
+                                <Key className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Reset Password</TooltipContent>
+                          </Tooltip>
+
+                          <Dialog
+                            open={deleteDialogId === customer.id}
+                            onOpenChange={(open) => !open && setDeleteDialogId(null)}
+                          >
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => setDeleteDialogId(customer.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Hapus</TooltipContent>
+                            </Tooltip>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Hapus Pelanggan?</DialogTitle>
+                                <DialogDescription>
+                                  Apakah Anda yakin ingin menghapus pelanggan "{customer.name}"?
+                                  Aksi ini tidak dapat dibatalkan.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <DialogFooter>
+                                <DialogClose asChild>
+                                  <Button variant="outline">Batal</Button>
+                                </DialogClose>
+                                <Button
+                                  variant="destructive"
+                                  onClick={() => handleDelete(customer)}
+                                >
+                                  Hapus
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         )}
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-            <p className="text-sm text-gray-500">
-              Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} -{" "}
-              {Math.min(currentPage * ITEMS_PER_PAGE, filteredCustomers.length)}{" "}
-              dari {filteredCustomers.length}
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <button
+          <Card>
+            <CardContent className="flex items-center justify-between py-4">
+              <p className="text-sm text-muted-foreground">
+                Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} -{" "}
+                {Math.min(currentPage * ITEMS_PER_PAGE, filteredCustomers.length)}{" "}
+                dari {filteredCustomers.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
                     key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
                     onClick={() => setCurrentPage(page)}
-                    className={`w-10 h-10 rounded-lg font-medium ${
-                      currentPage === page
-                        ? "bg-cyan-500 text-white"
-                        : "border border-gray-200 hover:bg-gray-50"
-                    }`}
                   >
                     {page}
-                  </button>
-                )
-              )}
-              <button
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          </div>
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
-      </div>
 
-      {/* Edit Modal */}
-      {isEditing && selectedCustomer && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-800">
-                Edit Pelanggan
-              </h2>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nama
-                </label>
-                <input
-                  type="text"
+        {/* Edit Modal */}
+        <Dialog open={isEditing} onOpenChange={setIsEditing}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Pelanggan</DialogTitle>
+              <DialogDescription>
+                Perbarui informasi pelanggan di bawah ini
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-name">Nama</Label>
+                <Input
+                  id="edit-name"
                   value={editForm.name || ""}
                   onChange={(e) =>
                     setEditForm((prev) => ({ ...prev, name: e.target.value }))
                   }
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  No. HP
-                </label>
-                <input
-                  type="text"
+              <div className="grid gap-2">
+                <Label htmlFor="edit-phone">No. HP</Label>
+                <Input
+                  id="edit-phone"
                   value={editForm.phone || ""}
                   onChange={(e) =>
                     setEditForm((prev) => ({ ...prev, phone: e.target.value }))
                   }
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
+              <div className="grid gap-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
                   type="email"
                   value={editForm.email || ""}
                   onChange={(e) =>
                     setEditForm((prev) => ({ ...prev, email: e.target.value }))
                   }
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Alamat
-                </label>
-                <textarea
+              <div className="grid gap-2">
+                <Label htmlFor="edit-address">Alamat</Label>
+                <Textarea
+                  id="edit-address"
                   value={editForm.address || ""}
                   onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      address: e.target.value,
-                    }))
+                    setEditForm((prev) => ({ ...prev, address: e.target.value }))
                   }
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   rows={2}
                 />
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-              <button
-                onClick={() => setIsEditing(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleUpdate}
-                disabled={isSubmitting}
-                className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors disabled:opacity-50"
-              >
-                {isSubmitting ? "Menyimpan..." : "Simpan"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Batal</Button>
+              </DialogClose>
+              <Button onClick={handleUpdate} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Simpan"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {/* Reset Password Modal */}
-      {showResetPassword && selectedCustomer && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-800">
-                Reset Password
-              </h2>
-              <button
-                onClick={() => {
-                  setShowResetPassword(false);
-                  setNewPassword("");
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X size={20} />
-              </button>
+        {/* Reset Password Modal */}
+        <Dialog open={showResetPassword} onOpenChange={setShowResetPassword}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset Password</DialogTitle>
+              <DialogDescription>
+                Reset password untuk <strong>{selectedCustomer?.name}</strong>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="new-password">Password Baru</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Masukkan password baru"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="p-6">
-              <p className="text-sm text-gray-600 mb-4">
-                Reset password untuk <strong>{selectedCustomer.name}</strong>
-              </p>
-              <input
-                type="password"
-                placeholder="Password baru"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              />
-            </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowResetPassword(false);
-                  setNewPassword("");
-                }}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Batal
-              </button>
-              <button
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline" onClick={() => setNewPassword("")}>
+                  Batal
+                </Button>
+              </DialogClose>
+              <Button
                 onClick={handleResetPassword}
                 disabled={isSubmitting || !newPassword}
-                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
               >
-                {isSubmitting ? "Processing..." : "Reset Password"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Reset Password"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </TooltipProvider>
   );
 };
 

@@ -20,6 +20,9 @@ import { GOOGLE_SCRIPT_URL } from "./constants";
 // Import Auth Module
 import { AuthProvider, useAuth, LoginForm } from "./modules/user";
 
+// Import Toaster from shadcn/ui
+import { Toaster } from "./components/ui/sonner";
+
 // Default permissions (fallback)
 const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
   ADMIN: {
@@ -246,6 +249,7 @@ function App() {
     <AuthProvider>
       <StoreProvider>
         <AppContent />
+        <Toaster position="top-right" richColors closeButton />
       </StoreProvider>
     </AuthProvider>
   );

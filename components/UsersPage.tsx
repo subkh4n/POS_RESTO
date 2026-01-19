@@ -10,13 +10,59 @@ import {
   Shield,
   User,
   Key,
-  X,
-  Check,
   Loader2,
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
 import { GOOGLE_SCRIPT_URL } from "../constants";
+import { toast } from "sonner";
+
+// shadcn/ui components
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Alert,
+  AlertDescription,
+} from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface UserData {
   id: string;
@@ -42,6 +88,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ currentUserId }) => {
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteDialogId, setDeleteDialogId] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -65,6 +112,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ currentUserId }) => {
       setUsers(data.users || []);
     } catch (err) {
       setError("Gagal memuat data users");
+      toast.error("Gagal memuat data users");
     } finally {
       setIsLoading(false);
     }
@@ -98,6 +146,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ currentUserId }) => {
         isActive: true,
       });
     }
+    setError(null);
     setShowModal(true);
   };
 
@@ -119,6 +168,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ currentUserId }) => {
       const data = await response.json();
 
       if (data.success) {
+        toast.success(editingUser ? "User berhasil diperbarui" : "User berhasil ditambahkan");
         setShowModal(false);
         fetchUsers();
       } else {
@@ -131,27 +181,28 @@ const UsersPage: React.FC<UsersPageProps> = ({ currentUserId }) => {
     }
   };
 
-  const handleDelete = async (userId: string) => {
-    if (userId === currentUserId) {
-      alert("Tidak bisa menghapus akun sendiri!");
+  const handleDelete = async (user: UserData) => {
+    if (user.id === currentUserId) {
+      toast.warning("Tidak bisa menghapus akun sendiri!");
       return;
     }
-    if (!confirm("Yakin ingin menghapus user ini?")) return;
 
     try {
       const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
-        body: JSON.stringify({ action: "deleteUser", id: userId }),
+        body: JSON.stringify({ action: "deleteUser", id: user.id }),
       });
       const data = await response.json();
 
       if (data.success) {
+        toast.success(`User ${user.name} berhasil dihapus`);
         fetchUsers();
+        setDeleteDialogId(null);
       } else {
-        alert(data.message || "Gagal menghapus user");
+        toast.error(data.message || "Gagal menghapus user");
       }
     } catch {
-      alert("Terjadi kesalahan");
+      toast.error("Terjadi kesalahan");
     }
   };
 
@@ -161,345 +212,366 @@ const UsersPage: React.FC<UsersPageProps> = ({ currentUserId }) => {
       u.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getRoleBadge = (role: string) => {
-    const styles: Record<string, string> = {
-      ADMIN: "bg-purple-100 text-purple-700",
-      MANAGER: "bg-amber-100 text-amber-700",
-      KASIR: "bg-blue-100 text-blue-700",
-    };
-    return (
-      <span
-        className={`px-2 py-1 rounded-full text-xs font-bold ${
-          styles[role] || "bg-gray-100"
-        }`}
-      >
-        {role}
-      </span>
-    );
+  const getRoleBadgeVariant = (role: string): "default" | "secondary" | "destructive" | "outline" => {
+    switch (role) {
+      case "ADMIN":
+        return "default";
+      case "MANAGER":
+        return "secondary";
+      default:
+        return "outline";
+    }
   };
 
-  return (
-    <div className="flex-1 bg-gray-50 p-6 overflow-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-xl text-purple-600">
-              <Users size={24} />
-            </div>
-            Manajemen Pengguna
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Kelola akun pengguna sistem POS
-          </p>
-        </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-sm transition-colors shadow-lg shadow-purple-200"
-        >
-          <UserPlus size={18} />
-          Tambah User
-        </button>
-      </div>
-
-      {/* Search & Refresh */}
-      <div className="flex gap-3 mb-6">
-        <div className="relative flex-1 max-w-md">
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          <input
-            type="text"
-            placeholder="Cari nama atau username..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
-        </div>
-        <button
-          onClick={fetchUsers}
-          className="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-        >
-          <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
-        </button>
-      </div>
-
-      {/* Users Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 size={32} className="animate-spin text-purple-500" />
+  if (isLoading) {
+    return (
+      <div className="flex-1 p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-40" />
           </div>
-        ) : filteredUsers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-            <Users size={48} className="mb-3 opacity-50" />
-            <p className="font-medium">Tidak ada user ditemukan</p>
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">
-                  User
-                </th>
-                <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">
-                  Role
-                </th>
-                <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">
-                  Kontak
-                </th>
-                <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="text-right py-4 px-6 text-xs font-bold text-gray-500 uppercase">
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filteredUsers.map((user) => (
-                <tr
-                  key={user.id}
-                  className="hover:bg-gray-50/50 transition-colors"
-                >
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                        {user.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-bold text-gray-800">{user.name}</p>
-                        <p className="text-xs text-gray-400">
-                          @{user.username}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">{getRoleBadge(user.role)}</td>
-                  <td className="py-4 px-6">
-                    <p className="text-sm text-gray-600">{user.email || "-"}</p>
-                    <p className="text-xs text-gray-400">{user.phone || "-"}</p>
-                  </td>
-                  <td className="py-4 px-6">
-                    <span
-                      className={`flex items-center gap-1.5 text-xs font-medium ${
-                        user.isActive ? "text-emerald-600" : "text-red-500"
-                      }`}
-                    >
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          user.isActive ? "bg-emerald-500" : "bg-red-500"
-                        }`}
-                      ></span>
-                      {user.isActive ? "Aktif" : "Nonaktif"}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleOpenModal(user)}
-                        className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user.id)}
-                        className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors"
-                        title="Hapus"
-                        disabled={user.id === currentUserId}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Add/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-800">
-                {editingUser ? "Edit User" : "Tambah User Baru"}
-              </h3>
-              <button
-                onClick={() => setShowModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 text-red-600 rounded-xl text-sm">
-                  <AlertCircle size={16} />
-                  {error}
+          <Skeleton className="h-9 w-32" />
+        </div>
+        <Skeleton className="h-10 w-80" />
+        <Card>
+          <CardContent className="p-0">
+            <div className="space-y-4 p-6">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-6 w-16" />
                 </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <TooltipProvider>
+      <div className="flex-1 p-6 space-y-6 overflow-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-primary/10 rounded-xl">
+              <Users className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Manajemen Pengguna</h1>
+              <p className="text-muted-foreground">
+                Kelola akun pengguna sistem POS
+              </p>
+            </div>
+          </div>
+          <Button onClick={() => handleOpenModal()}>
+            <UserPlus className="h-4 w-4" />
+            Tambah User
+          </Button>
+        </div>
+
+        {/* Search & Refresh */}
+        <div className="flex gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Cari nama atau username..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button variant="outline" size="icon" onClick={fetchUsers}>
+            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+
+        {/* Users Table */}
+        {filteredUsers.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <Users className="h-16 w-16 mb-4 opacity-50" />
+              <p className="text-lg font-medium">Tidak ada user ditemukan</p>
+              <p className="text-sm">Tambahkan user baru untuk memulai</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead className="hidden md:table-cell">Kontak</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar>
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
+                              {user.name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{user.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              @{user.username}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getRoleBadgeVariant(user.role)}>
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <p className="text-sm">{user.email || "-"}</p>
+                        <p className="text-xs text-muted-foreground">{user.phone || "-"}</p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              user.isActive ? "bg-green-500" : "bg-red-500"
+                            }`}
+                          />
+                          <span className={`text-xs font-medium ${
+                            user.isActive ? "text-green-600" : "text-red-500"
+                          }`}>
+                            {user.isActive ? "Aktif" : "Nonaktif"}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => handleOpenModal(user)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit</TooltipContent>
+                          </Tooltip>
+
+                          <Dialog
+                            open={deleteDialogId === user.id}
+                            onOpenChange={(open) => !open && setDeleteDialogId(null)}
+                          >
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => setDeleteDialogId(user.id)}
+                                  disabled={user.id === currentUserId}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Hapus</TooltipContent>
+                            </Tooltip>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Hapus User?</DialogTitle>
+                                <DialogDescription>
+                                  Apakah Anda yakin ingin menghapus user "{user.name}"?
+                                  Aksi ini tidak dapat dibatalkan.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <DialogFooter>
+                                <DialogClose asChild>
+                                  <Button variant="outline">Batal</Button>
+                                </DialogClose>
+                                <Button
+                                  variant="destructive"
+                                  onClick={() => handleDelete(user)}
+                                >
+                                  Hapus
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Add/Edit Modal */}
+        <Dialog open={showModal} onOpenChange={setShowModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {editingUser ? "Edit User" : "Tambah User Baru"}
+              </DialogTitle>
+              <DialogDescription>
+                {editingUser
+                  ? "Perbarui informasi user di bawah ini"
+                  : "Isi form di bawah untuk menambahkan user baru"}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
               )}
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Username
-                  </label>
+                <div className="grid gap-2">
+                  <Label htmlFor="username">Username</Label>
                   <div className="relative">
-                    <User
-                      size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                    <input
-                      type="text"
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="username"
                       value={formData.username}
                       onChange={(e) =>
                         setFormData({ ...formData, username: e.target.value })
                       }
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="pl-10"
                       required
                       disabled={!!editingUser}
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="grid gap-2">
+                  <Label htmlFor="password">
                     {editingUser ? "Password Baru" : "Password"}
-                  </label>
+                  </Label>
                   <div className="relative">
-                    <Key
-                      size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                    <input
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="password"
                       type="password"
                       value={formData.password}
                       onChange={(e) =>
                         setFormData({ ...formData, password: e.target.value })
                       }
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      placeholder={
-                        editingUser ? "Kosongkan jika tidak diubah" : ""
-                      }
+                      className="pl-10"
+                      placeholder={editingUser ? "Kosongkan jika tidak diubah" : ""}
                       required={!editingUser}
                     />
                   </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nama Lengkap
-                </label>
-                <input
-                  type="text"
+              <div className="grid gap-2">
+                <Label htmlFor="name">Nama Lengkap</Label>
+                <Input
+                  id="name"
                   value={formData.name}
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Role
-                </label>
+              <div className="grid gap-2">
+                <Label htmlFor="role">Role</Label>
                 <div className="relative">
-                  <Shield
-                    size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  />
-                  <select
+                  <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                  <Select
                     value={formData.role}
-                    onChange={(e) =>
-                      setFormData({ ...formData, role: e.target.value as any })
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, role: value as any })
                     }
-                    className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none bg-white"
                   >
-                    <option value="KASIR">Kasir</option>
-                    <option value="MANAGER">Manager</option>
-                    <option value="ADMIN">Administrator</option>
-                  </select>
+                    <SelectTrigger className="pl-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="KASIR">Kasir</SelectItem>
+                      <SelectItem value="MANAGER">Manager</SelectItem>
+                      <SelectItem value="ADMIN">Administrator</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
-                  <input
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Telepon
-                  </label>
-                  <input
+                <div className="grid gap-2">
+                  <Label htmlFor="phone">Telepon</Label>
+                  <Input
+                    id="phone"
                     type="tel"
                     value={formData.phone}
                     onChange={(e) =>
                       setFormData({ ...formData, phone: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.isActive}
-                    onChange={(e) =>
-                      setFormData({ ...formData, isActive: e.target.checked })
-                    }
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                </label>
-                <span className="text-sm text-gray-700">Akun Aktif</span>
+                <Switch
+                  id="isActive"
+                  checked={formData.isActive}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, isActive: checked })
+                  }
+                />
+                <Label htmlFor="isActive">Akun Aktif</Label>
               </div>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-sm transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                >
+              <DialogFooter className="pt-4">
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">
+                    Batal
+                  </Button>
+                </DialogClose>
+                <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? (
-                    <Loader2 size={18} className="animate-spin" />
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Menyimpan...
+                    </>
                   ) : (
-                    <Check size={18} />
+                    editingUser ? "Simpan" : "Tambah"
                   )}
-                  {editingUser ? "Simpan" : "Tambah"}
-                </button>
-              </div>
+                </Button>
+              </DialogFooter>
             </form>
-          </div>
-        </div>
-      )}
-    </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </TooltipProvider>
   );
 };
 
