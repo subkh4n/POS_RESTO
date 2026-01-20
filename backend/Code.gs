@@ -127,6 +127,13 @@ function doPost(e) {
       return getCategories();
     }
 
+    if (action === "getPublicCategories") {
+      return getCategories();
+    }
+    if (action === "getDailyUniqueCode") {
+      return handleGetDailyUniqueCode();
+    }
+
     // ========== POS HANDLERS ==========
     if (action === "addOrder") {
       let sheetTrans =
@@ -143,8 +150,10 @@ function doPost(e) {
         data.change,
         data.orderType,
         data.tableNumber,
+        data.tableNumber,
         "Kasir Utama",
         data.paymentMethod,
+        data.uniqueCode || 0, // Column L: Unique Code
       ]);
 
       let sheetDetails =
@@ -917,6 +926,9 @@ const DEFAULT_STORE_SETTINGS = {
   storeAddress: "",
   storePhone: "",
   storeTagline: "Sistem Kasir Modern",
+  enablePPN: true,
+  taxPercentage: 10,
+  enableUniqueCode: false,
 };
 
 /**
@@ -979,6 +991,9 @@ function updateStoreSettings(data) {
       "storeAddress",
       "storePhone",
       "storeTagline",
+      "enablePPN",
+      "taxPercentage",
+      "enableUniqueCode",
     ];
 
     keysToUpdate.forEach((key) => {
@@ -1175,6 +1190,57 @@ function deleteQrisPayload(data) {
     return createJsonResponse({
       success: false,
       message: "Error: " + error.toString(),
+    });
+  }
+}
+
+/**
+ * Get the next unique payment code for today
+ * Resets to 1 every new day.
+ */
+function handleGetDailyUniqueCode() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName("Transactions");
+
+    // If no transactions sheet yet, start at 1
+    if (!sheet || sheet.getLastRow() < 2) {
+      return createJsonResponse({ uniqueCode: 1 });
+    }
+
+    const rows = sheet.getDataRange().getValues();
+    const today = new Date();
+    // Reset time part to compare dates only
+    today.setHours(0, 0, 0, 0);
+
+    let maxCode = 0;
+
+    // Iterate from newest to oldest to find today's max code
+    // Assuming Column B (index 1) is timestamp and Column L (index 11) is uniqueCode
+    // Note: Column L might not exist in old rows, so check length
+    for (let i = rows.length - 1; i >= 1; i--) {
+      const rowDate = new Date(rows[i][1]);
+      rowDate.setHours(0, 0, 0, 0);
+
+      // If we find a transaction from a previous day, we can stop searching if we assume sorted order
+      // But to be safe, we just check if it matches today
+      if (rowDate.getTime() === today.getTime()) {
+        const code = Number(rows[i][11]); // Column L is index 11 (0-based)
+        if (!isNaN(code) && code > maxCode) {
+          maxCode = code;
+        }
+      } else if (rowDate.getTime() < today.getTime()) {
+        // Optimization: if usage is strictly high-volume, maybe stop here.
+        // But for <1000 rows/day it's fast enough to just scan or break early.
+      }
+    }
+
+    return createJsonResponse({ uniqueCode: maxCode + 1 });
+  } catch (error) {
+    return createJsonResponse({
+      success: false,
+      message: "Error generating unique code: " + error.toString(),
+      uniqueCode: Math.floor(Math.random() * 999) + 1 // Fallback
     });
   }
 }

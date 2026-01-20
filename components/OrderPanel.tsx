@@ -17,7 +17,7 @@ import {
   ShoppingBag,
   ReceiptText,
 } from "lucide-react";
-import { submitOrder, getProducts } from "../services/api";
+import { submitOrder, getProducts, getDailyUniqueCode } from "../services/api"; // Added getDailyUniqueCode
 import { getDisplayImageUrl } from "../utils/format";
 import { useStore } from "../contexts/StoreContext";
 import { db } from "../lib/db";
@@ -52,14 +52,26 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
   const [debtorName, setDebtorName] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
-  const [isDonationEnabled, setIsDonationEnabled] = useState(false);
   const [selectedTable, setSelectedTable] = useState<string>("Table 1");
   const [showQrisModal, setShowQrisModal] = useState(false);
   const [qrisImage, setQrisImage] = useState<string | null>(null);
   const [isGeneratingQris, setIsGeneratingQris] = useState(false);
+  const [uniqueCode, setUniqueCode] = useState<number>(0);
 
   const scrollEndRef = useRef<HTMLDivElement>(null);
   const { settings: storeSettings } = useStore();
+
+  useEffect(() => {
+    if (storeSettings.enableUniqueCode) {
+      getDailyUniqueCode().then((res) => {
+        if (res.success && res.uniqueCode) {
+          setUniqueCode(res.uniqueCode);
+        }
+      });
+    } else {
+      setUniqueCode(0);
+    }
+  }, [storeSettings.enableUniqueCode, cart.length > 0]); // Refresh if cart becomes active or settings change
 
   const fmt = (n: number) => new Intl.NumberFormat("id-ID").format(n);
   const fmtCurrency = (n: number) =>
@@ -75,8 +87,13 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
     if (item.category.toLowerCase() === "donasi") return acc;
     return acc + item.price * item.qty;
   }, 0);
-  const tax = Math.round(taxableAmount * 0.1);
-  const total = subtotal + tax;
+
+  /* PPN Calculation based on settings */
+  const taxRate = (storeSettings.taxPercentage || 10) / 100;
+  const tax = storeSettings.enablePPN ? Math.round(taxableAmount * taxRate) : 0;
+
+  // Calculate Total
+  const total = subtotal + tax + (storeSettings.enableUniqueCode ? uniqueCode : 0);
   const cashValue = parseInt(cashReceived.replace(/\./g, "") || "0", 10);
   const change = cashValue - total;
 
@@ -131,6 +148,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
     paymentMethodStr: string,
     tableNum: string,
     orderTypeStr: string,
+    uniqueCodeVal: number = 0,
   ) => {
     const printArea = document.getElementById("print-area");
     if (!printArea) return;
@@ -191,10 +209,18 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
           <span>Subtotal</span>
           <span>${fmt(subtotalVal)}</span>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 10px;">
-          <span>Pajak (10%)</span>
-          <span>${fmt(taxVal)}</span>
-        </div>
+        ${storeSettings.enablePPN ? `
+          <div style="display: flex; justify-content: space-between; font-size: 10px;">
+            <span>Pajak (${storeSettings.taxPercentage || 10}%)</span>
+            <span>${fmt(taxVal)}</span>
+          </div>
+        ` : ""}
+        ${storeSettings.enableUniqueCode && uniqueCode > 0 ? `
+          <div style="display: flex; justify-content: space-between; font-size: 10px;">
+            <span>Kode Unik</span>
+            <span>${fmt(uniqueCode)}</span>
+          </div>
+        ` : ""}
         <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-top: 5px;">
           <span>TOTAL</span>
           <span>${fmt(totalVal)}</span>
@@ -305,6 +331,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
           ? `Piutang: ${debtorName}`
           : paymentMethod,
       timestamp: new Date().toISOString(),
+      uniqueCode: storeSettings.enableUniqueCode ? uniqueCode : 0,
     };
 
     const result = await submitOrder(payload);
@@ -324,6 +351,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
           : paymentMethod,
         selectedTable,
         orderType,
+        storeSettings.enableUniqueCode ? uniqueCode : 0
       );
       setShowSuccessToast(true);
     } else {
@@ -433,6 +461,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
                       change: 0,
                       paymentMethod: "QRIS",
                       timestamp: new Date().toISOString(),
+                      uniqueCode: storeSettings.enableUniqueCode ? uniqueCode : 0,
                     };
                     const result = await submitOrder(payload);
                     setIsProcessing(false);
@@ -448,6 +477,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
                         "QRIS",
                         selectedTable,
                         orderType,
+                        storeSettings.enableUniqueCode ? uniqueCode : 0
                       );
                       setShowSuccessToast(true);
                     } else {
@@ -600,10 +630,18 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
             <span>Subtotal</span>
             <span>{fmtCurrency(subtotal)}</span>
           </div>
-          <div className="flex justify-between text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-            <span>Pajak Resto (10%)</span>
-            <span>{fmtCurrency(tax)}</span>
-          </div>
+          {storeSettings.enablePPN && (
+            <div className="flex justify-between text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+              <span>Pajak Resto ({storeSettings.taxPercentage || 10}%)</span>
+              <span>{fmtCurrency(tax)}</span>
+            </div>
+          )}
+          {storeSettings.enableUniqueCode && uniqueCode > 0 && (
+            <div className="flex justify-between text-[11px] font-bold text-blue-500 uppercase tracking-widest">
+              <span>Kode Unik</span>
+              <span>{fmt(uniqueCode)}</span>
+            </div>
+          )}
           <div className="h-px bg-gray-50 my-2"></div>
           <div className="flex justify-between items-center">
             <span className="text-sm font-black text-slate-800 flex items-center gap-2">

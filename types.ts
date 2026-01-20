@@ -74,6 +74,7 @@ export interface OrderPayload {
   paymentMethod: string;
   timestamp: string;
   debtorName?: string;
+  uniqueCode?: number;
 }
 
 export interface TransactionRecord {

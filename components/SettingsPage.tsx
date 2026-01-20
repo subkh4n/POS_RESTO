@@ -21,6 +21,9 @@ import {
   Upload,
   Trash2,
   Check,
+  ToggleLeft,
+  ToggleRight,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "../modules/user";
 import { GOOGLE_SCRIPT_URL } from "../constants";
@@ -28,7 +31,7 @@ import { db, QrisPayload } from "../lib/db";
 import { decodeQRISFromImage } from "../lib/qris";
 import { toast } from "sonner";
 
-type TabType = "umum" | "pengguna" | "qris" | "tentang";
+type TabType = "umum" | "pengguna" | "qris" | "aturan" | "tentang";
 
 // Permission configuration
 const PERMISSIONS = [
@@ -93,12 +96,15 @@ const SettingsPage: React.FC = () => {
     storeAddress: "",
     storePhone: "",
     storeTagline: "Sistem Kasir Modern",
+    enablePPN: true,
+    enableUnitCode: false,
   });
   const [isSavingStore, setIsSavingStore] = useState(false);
 
   // Tab configuration
   const tabs = [
     { id: "umum" as TabType, label: "Umum", icon: Building2 },
+    { id: "aturan" as TabType, label: "Aturan Tambahan", icon: FileText },
     { id: "pengguna" as TabType, label: "Pengguna", icon: Users },
     { id: "qris" as TabType, label: "QRIS", icon: QrCode },
     { id: "tentang" as TabType, label: "Tentang", icon: Info },
@@ -395,6 +401,79 @@ const SettingsPage: React.FC = () => {
                 )}
                 Simpan Pengaturan
               </button>
+            </div>
+          </div>
+        );
+
+      case "aturan":
+        return (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <FileText size={20} className="text-blue-500" />
+                <h3 className="font-bold text-gray-800">Aturan Tambahan</h3>
+              </div>
+
+              <div className="space-y-4">
+                {/* PPN Toggle & Setting */}
+                <div className="flex flex-col gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-gray-800 text-sm">Pajak PPN</h4>
+                      <p className="text-xs text-gray-500 mt-1">Aktifkan perhitungan pajak otomatis di POS</p>
+                    </div>
+                    <button
+                      onClick={() => setStoreSettings({ ...storeSettings, enablePPN: !storeSettings.enablePPN })}
+                      className={`text-2xl transition-colors ${storeSettings.enablePPN ? "text-emerald-500" : "text-gray-300"}`}
+                    >
+                      {storeSettings.enablePPN ? <ToggleRight size={40} /> : <ToggleLeft size={40} />}
+                    </button>
+                  </div>
+
+                  {storeSettings.enablePPN && (
+                    <div className="flex items-center gap-3 mt-2 border-t border-gray-200 pt-3 animate-in fade-in slide-in-from-top-2">
+                       <label className="text-xs font-bold text-gray-600">Persentase Pajak (%):</label>
+                       <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={storeSettings.taxPercentage || 10}
+                          onChange={(e) => setStoreSettings({ ...storeSettings, taxPercentage: Number(e.target.value) })}
+                          className="w-20 px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-bold text-center focus:ring-2 focus:ring-emerald-500 outline-none"
+                       />
+                    </div>
+                  )}
+                </div>
+
+                {/* Unique Payment Code Toggle */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <div>
+                    <h4 className="font-bold text-gray-800 text-sm">Kode Unik Pembayaran</h4>
+                    <p className="text-xs text-gray-500 mt-1">Tambahkan nominal unik (1, 2, 3...) pada total tagihan untuk identifikasi transfer. Reset otomatis setiap hari.</p>
+                  </div>
+                  <button
+                    onClick={() => setStoreSettings({ ...storeSettings, enableUniqueCode: !storeSettings.enableUniqueCode })}
+                    className={`text-2xl transition-colors ${storeSettings.enableUniqueCode ? "text-emerald-500" : "text-gray-300"}`}
+                  >
+                    {storeSettings.enableUniqueCode ? <ToggleRight size={40} /> : <ToggleLeft size={40} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <button
+                  onClick={handleSaveStoreSettings}
+                  disabled={isSavingStore}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm transition-colors disabled:opacity-50"
+                >
+                  {isSavingStore ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Save size={16} />
+                  )}
+                  Simpan Perubahan
+                </button>
+              </div>
             </div>
           </div>
         );

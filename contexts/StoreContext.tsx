@@ -14,6 +14,9 @@ interface StoreSettings {
   storeAddress: string;
   storePhone: string;
   storeTagline: string;
+  enablePPN?: boolean;
+  taxPercentage?: number;
+  enableUniqueCode?: boolean; // Unique Payment Code (1, 2, 3...)
 }
 
 interface StoreContextType {
@@ -29,6 +32,9 @@ const DEFAULT_SETTINGS: StoreSettings = {
   storeAddress: "",
   storePhone: "",
   storeTagline: "Sistem Kasir Modern",
+  enablePPN: true,
+  taxPercentage: 10,
+  enableUniqueCode: false,
 };
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);

@@ -8,6 +8,7 @@ import {
   typography,
   buttonStyles,
 } from "../styles/design-system";
+import { useStore } from "../contexts/StoreContext";
 
 interface ProductCardProps {
   product: Product;
@@ -20,6 +21,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onAdd,
   hasModifiers,
 }) => {
+  const { settings } = useStore();
   const isFlexible =
     product.category.toLowerCase() === "donasi" ||
     product.priceType === "FLEXIBLE";
@@ -109,6 +111,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
           <h3
             className={`${typography.h4} text-gray-800 text-[11px] leading-tight line-clamp-2 pr-1`}
           >
+            {settings.enableUnitCode && (
+              <span className="text-[9px] text-gray-400 font-mono mr-1">
+                [{product.id}]
+              </span>
+            )}
             {product.name}
           </h3>
         </div>

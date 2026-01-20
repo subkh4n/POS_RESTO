@@ -244,3 +244,16 @@ export const adjustStock = async (
     return { success: false, message: "Gagal menyesuaikan stok." };
   }
 };
+
+export const getDailyUniqueCode = async (): Promise<{ success: boolean; uniqueCode?: number; message?: string }> => {
+  if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("PASTE_URL")) {
+    return { success: true, uniqueCode: Math.floor(Math.random() * 100) + 1 };
+  }
+  try {
+    const response = await fetchWithTimeout(`${GOOGLE_SCRIPT_URL}?action=getDailyUniqueCode`);
+    const data = await response.json();
+    return { success: true, uniqueCode: data.uniqueCode || 1 };
+  } catch (error) {
+    return { success: false, uniqueCode: 1, message: "Gagal ambil kode unik" };
+  }
+};
