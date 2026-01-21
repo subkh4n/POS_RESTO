@@ -93,7 +93,8 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
   const tax = storeSettings.enablePPN ? Math.round(taxableAmount * taxRate) : 0;
 
   // Calculate Total
-  const total = subtotal + tax + (storeSettings.enableUniqueCode ? uniqueCode : 0);
+  const total =
+    subtotal + tax + (storeSettings.enableUniqueCode ? uniqueCode : 0);
   const cashValue = parseInt(cashReceived.replace(/\./g, "") || "0", 10);
   const change = cashValue - total;
 
@@ -209,18 +210,26 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
           <span>Subtotal</span>
           <span>${fmt(subtotalVal)}</span>
         </div>
-        ${storeSettings.enablePPN ? `
+        ${
+          storeSettings.enablePPN
+            ? `
           <div style="display: flex; justify-content: space-between; font-size: 10px;">
             <span>Pajak (${storeSettings.taxPercentage || 10}%)</span>
             <span>${fmt(taxVal)}</span>
           </div>
-        ` : ""}
-        ${storeSettings.enableUniqueCode && uniqueCode > 0 ? `
+        `
+            : ""
+        }
+        ${
+          storeSettings.enableUniqueCode && uniqueCode > 0
+            ? `
           <div style="display: flex; justify-content: space-between; font-size: 10px;">
             <span>Kode Unik</span>
             <span>${fmt(uniqueCode)}</span>
           </div>
-        ` : ""}
+        `
+            : ""
+        }
         <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-top: 5px;">
           <span>TOTAL</span>
           <span>${fmt(totalVal)}</span>
@@ -267,7 +276,9 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
       try {
         const activeQris = await db.qris.getActive();
         if (!activeQris) {
-          toast.warning("Belum ada QRIS aktif. Silakan upload di Pengaturan > QRIS.");
+          toast.warning(
+            "Belum ada QRIS aktif. Silakan upload di Pengaturan > QRIS.",
+          );
           setShowQrisModal(false);
           setIsGeneratingQris(false);
           return;
@@ -277,7 +288,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
       } catch (error) {
         toast.error(
           "Gagal generate QRIS: " +
-            (error instanceof Error ? error.message : String(error))
+            (error instanceof Error ? error.message : String(error)),
         );
         setShowQrisModal(false);
       } finally {
@@ -351,7 +362,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
           : paymentMethod,
         selectedTable,
         orderType,
-        storeSettings.enableUniqueCode ? uniqueCode : 0
+        storeSettings.enableUniqueCode ? uniqueCode : 0,
       );
       setShowSuccessToast(true);
     } else {
@@ -360,9 +371,9 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
   };
 
   return (
-    <div className="w-full h-[100dvh] bg-white flex flex-col shadow-2xl border-l border-gray-100 relative overflow-hidden">
+    <div className="w-full h-dvh bg-white flex flex-col shadow-2xl border-l border-gray-100 relative overflow-hidden">
       {showSuccessToast && (
-        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md z-[60] flex flex-col items-center justify-center p-6 animate-in fade-in">
+        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md z-60 flex flex-col items-center justify-center p-6 animate-in fade-in">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xs overflow-hidden p-6 text-center">
             <div className="bg-emerald-500 w-16 h-16 rounded-full flex items-center justify-center text-white mx-auto mb-4">
               <CheckCircle2 size={32} />
@@ -390,7 +401,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
 
       {/* QRIS Modal */}
       {showQrisModal && (
-        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md z-[60] flex flex-col items-center justify-center p-6">
+        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md z-60 flex flex-col items-center justify-center p-6">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-800">
@@ -461,7 +472,9 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
                       change: 0,
                       paymentMethod: "QRIS",
                       timestamp: new Date().toISOString(),
-                      uniqueCode: storeSettings.enableUniqueCode ? uniqueCode : 0,
+                      uniqueCode: storeSettings.enableUniqueCode
+                        ? uniqueCode
+                        : 0,
                     };
                     const result = await submitOrder(payload);
                     setIsProcessing(false);
@@ -477,7 +490,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
                         "QRIS",
                         selectedTable,
                         orderType,
-                        storeSettings.enableUniqueCode ? uniqueCode : 0
+                        storeSettings.enableUniqueCode ? uniqueCode : 0,
                       );
                       setShowSuccessToast(true);
                     } else {
@@ -624,7 +637,7 @@ const OrderPanel: React.FC<OrderPanelProps> = ({
       </div>
 
       {/* Footer - Fixed at bottom */}
-      <div className="flex-shrink-0 p-4 pb-2 bg-white border-t border-gray-100">
+      <div className="shrink-0 p-4 pb-2 bg-white border-t border-gray-100">
         <div className="space-y-2.5 mb-6">
           <div className="flex justify-between text-[11px] font-bold text-gray-400 uppercase tracking-widest">
             <span>Subtotal</span>

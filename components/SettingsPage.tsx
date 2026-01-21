@@ -14,18 +14,19 @@ import {
   Store,
   Phone,
   MapPin,
-  Save,
+  FileText,
   Building2,
   Users,
   QrCode,
   Upload,
   Trash2,
   Check,
+  Save,
   ToggleLeft,
   ToggleRight,
-  FileText,
 } from "lucide-react";
 import { useAuth } from "../modules/user";
+import { useStore } from "../contexts/StoreContext";
 import { GOOGLE_SCRIPT_URL } from "../constants";
 import { db, QrisPayload } from "../lib/db";
 import { decodeQRISFromImage } from "../lib/qris";
@@ -82,6 +83,11 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
+  const {
+    settings: contextSettings,
+    updateSettings,
+    refreshSettings,
+  } = useStore();
   const [activeTab, setActiveTab] = useState<TabType>("umum");
   const [permissions, setPermissions] =
     useState<Record<string, Record<string, boolean>>>(DEFAULT_PERMISSIONS);
@@ -90,16 +96,14 @@ const SettingsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Store settings state
-  const [storeSettings, setStoreSettings] = useState({
-    storeName: "FoodCourt POS",
-    storeAddress: "",
-    storePhone: "",
-    storeTagline: "Sistem Kasir Modern",
-    enablePPN: true,
-    enableUnitCode: false,
-  });
+  // Local temporary state for editing (synced with context)
+  const [storeSettings, setStoreSettings] = useState(contextSettings);
   const [isSavingStore, setIsSavingStore] = useState(false);
+
+  // Sync local state with context when context updates
+  useEffect(() => {
+    setStoreSettings(contextSettings);
+  }, [contextSettings]);
 
   // Tab configuration
   const tabs = [
@@ -177,7 +181,7 @@ const SettingsPage: React.FC = () => {
     } catch (error) {
       toast.error(
         "Gagal generate: " +
-          (error instanceof Error ? error.message : String(error))
+          (error instanceof Error ? error.message : String(error)),
       );
     }
   };
@@ -199,40 +203,25 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const fetchStoreSettings = async () => {
-    try {
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "getStoreSettings" }),
-      });
-      const data = await response.json();
-      if (data.settings) setStoreSettings(data.settings);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const handleSaveStoreSettings = async () => {
     setIsSavingStore(true);
     setError(null);
     setSuccessMsg(null);
     try {
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "updateStoreSettings",
-          ...storeSettings,
-        }),
-      });
-      const data = await response.json();
-      if (data.success) {
+      // Update via StoreContext (which saves to backend)
+      const success = await updateSettings(storeSettings);
+
+      if (success) {
+        // Refresh context to ensure all components get updated values
+        await refreshSettings();
         setSuccessMsg("Pengaturan toko berhasil disimpan!");
         setTimeout(() => setSuccessMsg(null), 3000);
       } else {
-        setError(data.message || "Gagal menyimpan");
+        setError("Gagal menyimpan pengaturan");
       }
     } catch (err) {
       setError("Gagal menyimpan pengaturan");
+      console.error(err);
     } finally {
       setIsSavingStore(false);
     }
@@ -281,8 +270,8 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     fetchPermissions();
-    fetchStoreSettings();
     loadQrisData();
+    // Store settings are loaded via StoreContext automatically
   }, []);
 
   const hasAccess = (role: string, feature: string) =>
@@ -419,28 +408,48 @@ const SettingsPage: React.FC = () => {
                 <div className="flex flex-col gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-bold text-gray-800 text-sm">Pajak PPN</h4>
-                      <p className="text-xs text-gray-500 mt-1">Aktifkan perhitungan pajak otomatis di POS</p>
+                      <h4 className="font-bold text-gray-800 text-sm">
+                        Pajak PPN
+                      </h4>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Aktifkan perhitungan pajak otomatis di POS
+                      </p>
                     </div>
                     <button
-                      onClick={() => setStoreSettings({ ...storeSettings, enablePPN: !storeSettings.enablePPN })}
+                      onClick={() =>
+                        setStoreSettings({
+                          ...storeSettings,
+                          enablePPN: !storeSettings.enablePPN,
+                        })
+                      }
                       className={`text-2xl transition-colors ${storeSettings.enablePPN ? "text-emerald-500" : "text-gray-300"}`}
                     >
-                      {storeSettings.enablePPN ? <ToggleRight size={40} /> : <ToggleLeft size={40} />}
+                      {storeSettings.enablePPN ? (
+                        <ToggleRight size={40} />
+                      ) : (
+                        <ToggleLeft size={40} />
+                      )}
                     </button>
                   </div>
 
                   {storeSettings.enablePPN && (
                     <div className="flex items-center gap-3 mt-2 border-t border-gray-200 pt-3 animate-in fade-in slide-in-from-top-2">
-                       <label className="text-xs font-bold text-gray-600">Persentase Pajak (%):</label>
-                       <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={storeSettings.taxPercentage || 10}
-                          onChange={(e) => setStoreSettings({ ...storeSettings, taxPercentage: Number(e.target.value) })}
-                          className="w-20 px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-bold text-center focus:ring-2 focus:ring-emerald-500 outline-none"
-                       />
+                      <label className="text-xs font-bold text-gray-600">
+                        Persentase Pajak (%):
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={storeSettings.taxPercentage || 10}
+                        onChange={(e) =>
+                          setStoreSettings({
+                            ...storeSettings,
+                            taxPercentage: Number(e.target.value),
+                          })
+                        }
+                        className="w-20 px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-bold text-center focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
                     </div>
                   )}
                 </div>
@@ -448,14 +457,28 @@ const SettingsPage: React.FC = () => {
                 {/* Unique Payment Code Toggle */}
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
                   <div>
-                    <h4 className="font-bold text-gray-800 text-sm">Kode Unik Pembayaran</h4>
-                    <p className="text-xs text-gray-500 mt-1">Tambahkan nominal unik (1, 2, 3...) pada total tagihan untuk identifikasi transfer. Reset otomatis setiap hari.</p>
+                    <h4 className="font-bold text-gray-800 text-sm">
+                      Kode Unik Pembayaran
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Tambahkan nominal unik (1, 2, 3...) pada total tagihan
+                      untuk identifikasi transfer. Reset otomatis setiap hari.
+                    </p>
                   </div>
                   <button
-                    onClick={() => setStoreSettings({ ...storeSettings, enableUniqueCode: !storeSettings.enableUniqueCode })}
+                    onClick={() =>
+                      setStoreSettings({
+                        ...storeSettings,
+                        enableUniqueCode: !storeSettings.enableUniqueCode,
+                      })
+                    }
                     className={`text-2xl transition-colors ${storeSettings.enableUniqueCode ? "text-emerald-500" : "text-gray-300"}`}
                   >
-                    {storeSettings.enableUniqueCode ? <ToggleRight size={40} /> : <ToggleLeft size={40} />}
+                    {storeSettings.enableUniqueCode ? (
+                      <ToggleRight size={40} />
+                    ) : (
+                      <ToggleLeft size={40} />
+                    )}
                   </button>
                 </div>
               </div>
@@ -614,7 +637,7 @@ const SettingsPage: React.FC = () => {
               ].map(({ role, color, textColor, icon: Icon }) => (
                 <div
                   key={role}
-                  className={`bg-gradient-to-br ${color} rounded-2xl p-4 text-white`}
+                  className={`bg-linear-to-br ${color} rounded-2xl p-4 text-white`}
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <div className="p-1.5 bg-white/20 rounded-lg">
@@ -842,7 +865,7 @@ const SettingsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white">
+            <div className="bg-linear-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white">
               <h3 className="font-bold mb-2">Tentang Sistem</h3>
               <p className="text-sm text-slate-300 leading-relaxed">
                 FoodCourt POS adalah sistem kasir modern berbasis web yang

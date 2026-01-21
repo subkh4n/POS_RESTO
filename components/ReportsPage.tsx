@@ -65,7 +65,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
   // Custom Delete Modal State
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [idToPendingDelete, setIdToPendingDelete] = useState<string | null>(
-    null
+    null,
   );
 
   const [editForm, setEditForm] = useState({
@@ -242,10 +242,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
               item.qty
             }</td>
             <td style="text-align: right; padding: 0 0 4px 0;">${fmt(
-              item.price * item.qty
+              item.price * item.qty,
             )}</td>
           </tr>
-        `
+        `,
           )
           .join("")}
       </table>
@@ -263,7 +263,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
     (t) =>
       (t.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (t.tableNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (t.paymentMethod || "").toLowerCase().includes(searchQuery.toLowerCase())
+      (t.paymentMethod || "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   // Apply order type filter and date range filter
@@ -287,7 +287,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedTxs = displayedTxs.slice(
     startIndex,
-    startIndex + ITEMS_PER_PAGE
+    startIndex + ITEMS_PER_PAGE,
   );
 
   // Reset to page 1 when filters change
@@ -299,7 +299,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
     <div className="flex-1 bg-gray-50 h-screen overflow-y-auto custom-scroll p-4 lg:p-8 animate-in fade-in duration-500 relative">
       {/* Custom Delete Confirmation Pop-up */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-250 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-sm p-8 text-center animate-in zoom-in-95">
             <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertTriangle size={32} />
@@ -340,7 +340,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
 
       {toast.show && (
         <div
-          className={`fixed top-8 right-8 z-[200] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-top-10 duration-300 ${
+          className={`fixed top-8 right-8 z-200 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-top-10 duration-300 ${
             toast.type === "success"
               ? "bg-emerald-600 text-white"
               : "bg-red-600 text-white"
@@ -598,7 +598,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
                   >
                     {page}
                   </button>
-                )
+                ),
               )}
               <button
                 onClick={() =>
@@ -615,7 +615,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
       </div>
 
       {selectedTx && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-150 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95">
             <div className="p-6 border-b border-gray-50 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -794,7 +794,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onRefresh }) => {
                   <button
                     onClick={handleSaveEdit}
                     disabled={isSaving}
-                    className="flex-[2] flex items-center justify-center gap-2 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 disabled:opacity-50 transition-all"
+                    className="flex-2 flex items-center justify-center gap-2 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 disabled:opacity-50 transition-all"
                   >
                     {isSaving ? (
                       <Loader2 size={18} className="animate-spin" />

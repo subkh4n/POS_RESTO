@@ -55,8 +55,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
         body: JSON.stringify({ action: "getStoreSettings" }),
       });
       const data = await response.json();
+      console.log("📥 Received settings from backend:", data.settings);
       if (data.settings) {
-        setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
+        const merged = { ...DEFAULT_SETTINGS, ...data.settings };
+        console.log("🔄 Merged settings:", merged);
+        setSettings(merged);
       }
     } catch (err) {
       console.error("Failed to fetch store settings:", err);
@@ -67,7 +70,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const updateSettings = async (
-    newSettings: Partial<StoreSettings>
+    newSettings: Partial<StoreSettings>,
   ): Promise<boolean> => {
     try {
       const response = await fetch(GOOGLE_SCRIPT_URL, {

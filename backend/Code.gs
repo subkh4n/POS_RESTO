@@ -955,11 +955,20 @@ function getStoreSettings() {
       const key = rows[i][0];
       const value = rows[i][1];
       if (key) {
-        settings[key] = value || "";
+        // Properly handle different types
+        if (value === true || value === "TRUE" || value === "true") {
+          settings[key] = true;
+        } else if (value === false || value === "FALSE" || value === "false") {
+          settings[key] = false;
+        } else if (typeof value === "number") {
+          settings[key] = value;
+        } else {
+          settings[key] = value || "";
+        }
       }
     }
 
-    // Merge with defaults
+    // Merge with defaults (settings from sheet override defaults)
     const result = { ...DEFAULT_STORE_SETTINGS, ...settings };
 
     return createJsonResponse({ settings: result });
@@ -1041,6 +1050,9 @@ function createSettingsSheet(ss) {
   sheet.appendRow(["storeAddress", ""]);
   sheet.appendRow(["storePhone", ""]);
   sheet.appendRow(["storeTagline", "Sistem Kasir Modern"]);
+  sheet.appendRow(["enablePPN", true]);
+  sheet.appendRow(["taxPercentage", 10]);
+  sheet.appendRow(["enableUniqueCode", false]);
 
   return sheet;
 }
@@ -1240,7 +1252,7 @@ function handleGetDailyUniqueCode() {
     return createJsonResponse({
       success: false,
       message: "Error generating unique code: " + error.toString(),
-      uniqueCode: Math.floor(Math.random() * 999) + 1 // Fallback
+      uniqueCode: Math.floor(Math.random() * 999) + 1, // Fallback
     });
   }
 }
