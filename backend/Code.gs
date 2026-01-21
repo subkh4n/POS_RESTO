@@ -594,9 +594,10 @@ function getTransactions() {
   if (!sheet || sheet.getLastRow() < 2)
     return createJsonResponse({ transactions: [] });
 
-  // Get transaction details to calculate donations
+  // Get transaction details to calculate donations AND items
   const detailSheet = ss.getSheetByName("Transaction_Details");
   let donationByOrderId = {};
+  let itemsByOrderId = {};
 
   if (detailSheet && detailSheet.getLastRow() >= 2) {
     const detailRows = detailSheet.getDataRange().getValues();
@@ -610,6 +611,19 @@ function getTransactions() {
         donationByOrderId[orderId] =
           (donationByOrderId[orderId] || 0) + totalPrice;
       }
+
+      // Collect items for each order
+      if (!itemsByOrderId[orderId]) {
+        itemsByOrderId[orderId] = [];
+      }
+      itemsByOrderId[orderId].push({
+        id: String(detailRows[i][2]),
+        name: String(detailRows[i][3]),
+        qty: Number(detailRows[i][4]),
+        price: Number(detailRows[i][5]),
+        note: String(detailRows[i][6] || ""),
+        allocation: allocation,
+      });
     }
   }
 
@@ -632,6 +646,7 @@ function getTransactions() {
           cashier: row[9],
           paymentMethod: row[10],
           donation: donationByOrderId[orderId] || 0,
+          items: itemsByOrderId[orderId] || [],
         };
       })
       .reverse(),

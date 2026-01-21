@@ -32,11 +32,11 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   const stats = useMemo(() => {
     const today = new Date().toDateString();
     const todayTransactions = transactions.filter(
-      (t) => new Date(t.timestamp).toDateString() === today
+      (t) => new Date(t.timestamp).toDateString() === today,
     );
     const revenueToday = todayTransactions.reduce(
       (sum, t) => sum + (t.total || 0),
-      0
+      0,
     );
     const activePiutang = transactions
       .filter((t) => t.paymentMethod?.toLowerCase().includes("piutang"))
@@ -45,7 +45,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
     const DAILY_TARGET = 5000000;
     const targetProgress = Math.min(
       Math.round((revenueToday / DAILY_TARGET) * 100),
-      100
+      100,
     );
 
     const last7Days = [...Array(7)].map((_, i) => {
@@ -63,6 +63,39 @@ const DashboardView: React.FC<DashboardViewProps> = ({
 
     const maxDayValue = Math.max(...last7Days.map((d) => d.value), 100000);
 
+    // Calculate top selling items from today's transactions
+    const itemCounts: Record<string, { name: string; count: number }> = {};
+
+    todayTransactions.forEach((transaction) => {
+      if (transaction.items && Array.isArray(transaction.items)) {
+        transaction.items.forEach((item: any) => {
+          const itemName = item.name || "Unknown";
+          const qty = item.qty || 1;
+
+          if (!itemCounts[itemName]) {
+            itemCounts[itemName] = { name: itemName, count: 0 };
+          }
+          itemCounts[itemName].count += qty;
+        });
+      }
+    });
+
+    // Sort by count and take top 5
+    const topSellingItems = Object.values(itemCounts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map((item, index) => ({
+        name: item.name,
+        val: item.count,
+        clr: [
+          "bg-emerald-500",
+          "bg-blue-500",
+          "bg-amber-500",
+          "bg-rose-500",
+          "bg-purple-500",
+        ][index % 5],
+      }));
+
     return {
       revenueToday,
       orderCountToday: todayTransactions.length,
@@ -71,6 +104,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
       dailyTargetValue: DAILY_TARGET,
       chartData: last7Days,
       maxDayValue,
+      topSellingItems,
     };
   }, [transactions]);
 
@@ -223,31 +257,35 @@ const DashboardView: React.FC<DashboardViewProps> = ({
             <CheckCircle2 size={18} className="text-emerald-500" />
           </h3>
           <div className="space-y-4">
-            {[
-              { name: "Nasi Goreng", val: 45, clr: "bg-emerald-500" },
-              { name: "Ayam Bakar", val: 32, clr: "bg-blue-500" },
-              { name: "Es Teh Manis", val: 58, clr: "bg-amber-500" },
-              { name: "Burger Keju", val: 12, clr: "bg-rose-500" },
-            ].map((p, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 hover:bg-white border border-transparent hover:border-gray-100 transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-8 h-8 rounded-lg ${p.clr} flex items-center justify-center text-white font-black text-[10px] shadow-sm`}
-                  >
-                    {p.name.charAt(0)}
+            {stats.topSellingItems.length > 0 ? (
+              stats.topSellingItems.map((p, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 hover:bg-white border border-transparent hover:border-gray-100 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-lg ${p.clr} flex items-center justify-center text-white font-black text-[10px] shadow-sm`}
+                    >
+                      {p.name.charAt(0)}
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 group-hover:text-emerald-600 transition-colors">
+                      {p.name}
+                    </span>
                   </div>
-                  <span className="text-xs font-bold text-slate-700 group-hover:text-emerald-600 transition-colors">
-                    {p.name}
+                  <span className="text-xs font-black text-slate-400">
+                    {p.val}x
                   </span>
                 </div>
-                <span className="text-xs font-black text-slate-400">
-                  {p.val}x
-                </span>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-400">
+                <Package size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm font-medium">
+                  Belum ada penjualan hari ini
+                </p>
               </div>
-            ))}
+            )}
           </div>
           <button
             onClick={() => onNavigate("items")}
