@@ -73,6 +73,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
     newSettings: Partial<StoreSettings>,
   ): Promise<boolean> => {
     try {
+      console.log("📤 Sending settings to backend:", newSettings);
       const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
         body: JSON.stringify({
@@ -81,9 +82,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
         }),
       });
       const data = await response.json();
+      console.log("✅ Backend response:", data);
 
       if (data.success) {
-        setSettings((prev) => ({ ...prev, ...newSettings }));
+        setSettings((prev) => {
+          const updated = { ...prev, ...newSettings };
+          console.log("🔄 Updated context settings:", updated);
+          return updated;
+        });
         return true;
       } else {
         setError(data.message || "Gagal menyimpan pengaturan");
