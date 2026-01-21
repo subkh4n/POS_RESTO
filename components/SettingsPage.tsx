@@ -208,12 +208,11 @@ const SettingsPage: React.FC = () => {
     setError(null);
     setSuccessMsg(null);
     try {
-      // Update via StoreContext (which saves to backend)
+      // Update via StoreContext (which saves to backend AND updates context)
       const success = await updateSettings(storeSettings);
 
       if (success) {
-        // Refresh context to ensure all components get updated values
-        await refreshSettings();
+        // No need to refresh - updateSettings already updated the context
         setSuccessMsg("Pengaturan toko berhasil disimpan!");
         setTimeout(() => setSuccessMsg(null), 3000);
       } else {
